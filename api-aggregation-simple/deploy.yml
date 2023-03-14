@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: api-hello
+  name: api-hello
+  namespace: default
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: api-hello
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: api-hello
+    spec:
+      containers:
+        - image: zengxu/api-aggregation-simple-4aab778c325a67e796bbe3f4966dcbaf
+          imagePullPolicy: Always
+          name: apiserver
+          env:
+            - name: CERT_DIR
+              value: /etc/app/cert
+          volumeMounts:
+            - name: cert
+              mountPath: /etc/app/cert
+      terminationGracePeriodSeconds: 3
+      volumes:
+        - name: cert
+          secret:
+            secretName: api-svc-cert
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: api-hello
+  name: api-hello
+spec:
+  ports:
+    - port: 443
+      protocol: TCP
+      targetPort: 8443
+  selector:
+    app: api-hello
+---
+apiVersion: v1
+data:
+  tls.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUNNVENDQWRlZ0F3SUJBZ0lSQU1rOUo2a1BLMCt2ejNKTlIveGhBaUl3Q2dZSUtvWkl6ajBFQXdJd0ZURVQKTUJFR0ExVUVDaE1LUzNWaVpYSnVaWFJsY3pBZ0Z3MDNNREF4TURFd01EQXdNREJhR0E4eU1EZzBNREV5T1RFMgpNREF3TUZvd0ZURVRNQkVHQTFVRUNoTUtTM1ZpWlhKdVpYUmxjekJaTUJNR0J5cUdTTTQ5QWdFR0NDcUdTTTQ5CkF3RUhBMElBQkhlTWFRYlFDM0FKdnpNSnVrdlpuMWRwdk96Z2lyV0p3QTR4RDJHSXJYazhFRFlJMmZOczl3VzMKVUV4RW1GT0V4R2g5Y1ozUGpYajNkRk9wVm5sOXAvbWpnZ0VFTUlJQkFEQU9CZ05WSFE4QkFmOEVCQU1DQW9RdwpFd1lEVlIwbEJBd3dDZ1lJS3dZQkJRVUhBd0V3RHdZRFZSMFRBUUgvQkFVd0F3RUIvekFkQmdOVkhRNEVGZ1FVClRzTDRWSWtNemdjWjNkdHdKZ2g1YiszcCtUUXdnYWdHQTFVZEVRU0JvRENCbllJTktpNXJkV0psTFhONWMzUmwKYllJUktpNXJkV0psTFhONWMzUmxiUzV6ZG1PQ0h5b3VhM1ZpWlMxemVYTjBaVzB1YzNaakxtTnNkWE4wWlhJdQpiRzlqWVd5Q0NTb3VaR1ZtWVhWc2RJSU5LaTVrWldaaGRXeDBMbk4yWTRJYktpNWtaV1poZFd4MExuTjJZeTVqCmJIVnpkR1Z5TG14dlkyRnNnZ2xzYjJOaGJHaHZjM1NIQkg4QUFBR0hFQUFBQUFBQUFBQUFBQUFBQUFBQUFBRXcKQ2dZSUtvWkl6ajBFQXdJRFNBQXdSUUlnSW1PU01sYVNJVVFxeCt6amhuMFFqWVY0VFNrS1JXZ1FyZ0F3MkVFVQpaS1VDSVFDL2RYZmx3TnI3N3dGbnQ5dSt5aThBZVp0c3ZZVFVCdmtpZEQvR2lYbml3QT09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+  tls.key: LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tCk1JR0hBZ0VBTUJNR0J5cUdTTTQ5QWdFR0NDcUdTTTQ5QXdFSEJHMHdhd0lCQVFRZ1NMczFWdHI3VjVnWndDZjkKRUJnZ3hSQUZRRGw3d2luQTZwTXU3SGNUK3phaFJBTkNBQVIzakdrRzBBdHdDYjh6Q2JwTDJaOVhhYnpzNElxMQppY0FPTVE5aGlLMTVQQkEyQ05uemJQY0Z0MUJNUkpoVGhNUm9mWEdkejQxNDkzUlRxVlo1ZmFmNQotLS0tLUVORCBQUklWQVRFIEtFWS0tLS0tCg==
+kind: Secret
+metadata:
+  name: api-svc-cert
+  namespace: default
+type: Opaque
+---
+apiVersion: apiregistration.k8s.io/v1
+kind: APIService
+metadata:
+  name: v1beta1.hello.zeng.dev
+spec:
+  service:
+    name: api-hello
+    namespace: default
+  group: hello.zeng.dev
+  version: v1beta1
+  insecureSkipTLSVerify: true
+  groupPriorityMinimum: 100
+  versionPriority: 100

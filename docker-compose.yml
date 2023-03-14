@@ -1,0 +1,33 @@
+services:
+  etcd:
+    hostname: etcd
+    image: registry.k8s.io/etcd:3.5.7-0
+    ports: [ "4001:4001" ]
+    command: >
+      /usr/local/bin/etcd
+      --listen-client-urls 'http://0.0.0.0:4001'
+      --advertise-client-urls 'http://0.0.0.0:4001'
+      --initial-cluster-state new
+  apiserver:
+    hostname: apiserver
+    image: registry.k8s.io/kube-apiserver:v1.26.2
+    ports: ["6443:6443"]
+    command: >
+      kube-apiserver
+      --external-hostname=apiserver
+      --etcd-servers=http://etcd:4001
+      --admission-control=NamespaceLifecycle,LimitRanger,ServiceAccount,ResourceQuota,PersistentVolumeLabel
+      --token-auth-file=/etc/kubernetes/pki/token-users.csv
+      --service-account-issuer=https://kubernetes.default.svc.cluster.local
+      --service-account-signing-key-file=/etc/kubernetes/pki/sa-ecdsa.key
+      --service-account-key-file=/etc/kubernetes/pki/sa-ecdsa.pub
+      --service-cluster-ip-range=172.20.0.0/16
+      --tls-cert-file=/etc/kubernetes/pki/apiserver.crt 
+      --tls-private-key-file=/etc/kubernetes/pki/apiserver.key
+      --service-node-port-range=30000-32767
+      --allow-privileged
+      --v=4
+    volumes:
+    - ./pki:/etc/kubernetes/pki:ro
+    links:
+    - etcd
