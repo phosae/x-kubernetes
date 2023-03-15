@@ -20,17 +20,15 @@ const (
 
 func main() {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", Hello)
-	mux.HandleFunc("/apis/hello.zeng.dev/v1beta1", Apis)
-	// LIST /apis/hello.zeng.dev/v1beta1/namespaces/default/foos
-	// GET  /apis/hello.zeng.dev/v1beta1/namespaces/default/foos/myfoo
-	// POST /apis/hello.zeng.dev/v1beta1/namespaces/default/foos/
-	// PUT  /apis/hello.zeng.dev/v1beta1/namespaces/default/foos/myfoo
-	// DEL  /apis/hello.zeng.dev/v1beta1/namespaces/default/foos/myfoo
+	mux.Handle("/", logHandler(http.NotFoundHandler()))
+	mux.HandleFunc("/apis/hello.zeng.dev/v1", Apis)
 
-	// /apis/hello.zeng.dev/v1beta1/namespaces/default/foos/bar
-	// /apis/hello.zeng.dev/v1beta1/namespaces/default/foos
-	mux.HandleFunc("/apis/hello.zeng.dev/v1beta1/namespaces/", fooHandler)
+	// LIST /apis/hello.zeng.dev/v1/namespaces/default/foos
+	// GET  /apis/hello.zeng.dev/v1/namespaces/default/foos/myfoo
+	// POST /apis/hello.zeng.dev/v1/namespaces/default/foos/
+	// PUT  /apis/hello.zeng.dev/v1/namespaces/default/foos/myfoo
+	// DEL  /apis/hello.zeng.dev/v1/namespaces/default/foos/myfoo
+	mux.Handle("/apis/hello.zeng.dev/v1/namespaces/", logHandler(ContentTypeJSONHandler(http.HandlerFunc(fooHandler)))) // ends with '/' for prefix matching...
 
 	if certDir := os.Getenv("CERT_DIR"); certDir != "" {
 		certFile := filepath.Join(certDir, tlsCertName)
@@ -44,8 +42,8 @@ func main() {
 }
 
 const apis = `kind: APIResourceList
-apiVersion: v1beta1
-groupVersion: hello.zeng.dev/v1beta1
+apiVersion: v1
+groupVersion: hello.zeng.dev/v1
 resources:
 - name: foos
   singularName: ''
@@ -67,14 +65,19 @@ func Apis(w http.ResponseWriter, _ *http.Request) {
 	w.Write([]byte(apis))
 }
 
-// const kapiTpl = `apiVersion: hello.zeng.dev/v1beta1
-// kind: Foo
-// metadata:
-//   name: {{.name}}
-//   namespace:
-// spec:
-//   msg: 'hello world'`
-
+// Foo is some object like
+//
+//	`{
+//	  "apiVersion": "hello.zeng.dev/v1",
+//	  "kind": "Foo",
+//	  "metadata": {
+//	    "name": "%s",
+//	    "namespace": "default"
+//	  },
+//	  "spec": {
+//	    "msg": "%s"
+//	  }
+//	}`
 type Foo struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -95,7 +98,7 @@ var foos = map[string]Foo{}
 
 func init() {
 	foos["bar"] = Foo{
-		TypeMeta:   metav1.TypeMeta{APIVersion: "hello.zeng.dev/v1beta1", Kind: "Foo"},
+		TypeMeta:   metav1.TypeMeta{APIVersion: "hello.zeng.dev/v1", Kind: "Foo"},
 		ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "bar"},
 		Spec: struct {
 			Msg string "json:\"msg\""
@@ -106,7 +109,7 @@ func init() {
 }
 
 func fooHandler(w http.ResponseWriter, r *http.Request) {
-	nsResource := strings.TrimLeft(r.URL.Path, "/apis/hello.zeng.dev/v1beta1/namespaces/")
+	nsResource := strings.TrimLeft(r.URL.Path, "/apis/hello.zeng.dev/v1/namespaces/")
 	parts := strings.Split(nsResource, "/")
 	if len(parts) == 2 { // GET/POST default/foos
 		switch r.Method {
@@ -141,14 +144,39 @@ func renderJSON(w http.ResponseWriter, v interface{}) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
+
 	w.Write(js)
+}
+
+const kstatusTmplate = `{
+	"kind":"Status",
+	"apiVersion":"v1",
+	"metadata":{},
+	"status":"Failure",
+	"message":"%s",
+	"reason":"%s",
+	"details":{"name":"%s","kind":"foos"},
+	"code":%d
+}`
+
+func writeErrStatus(w http.ResponseWriter, name string, status int) {
+	var errStatus string
+	switch status {
+	case http.StatusNotFound:
+		errStatus = fmt.Sprintf(kstatusTmplate, fmt.Sprintf(`foos '%s' not found`, name), http.StatusText(http.StatusNotFound), name, http.StatusNotFound)
+	case http.StatusConflict:
+		errStatus = fmt.Sprintf(kstatusTmplate, fmt.Sprintf(`foos '%s' already exists`, name), http.StatusText(http.StatusConflict), name, http.StatusConflict)
+	default:
+		errStatus = "{}"
+	}
+	w.Write([]byte(errStatus))
+	w.WriteHeader(status)
 }
 
 func GetFoo(w http.ResponseWriter, _ *http.Request, name string) {
 	f, ok := foos[name]
 	if !ok {
-		http.Error(w, fmt.Sprintf("foo/%s not found", name), http.StatusInternalServerError)
+		writeErrStatus(w, name, http.StatusNotFound)
 		return
 	}
 	renderJSON(w, f)
@@ -156,7 +184,7 @@ func GetFoo(w http.ResponseWriter, _ *http.Request, name string) {
 
 func GetAllFoos(w http.ResponseWriter, _ *http.Request) {
 	flist := FooList{
-		TypeMeta: metav1.TypeMeta{Kind: "FooList", APIVersion: "hello.zeng.dev/v1beta1"},
+		TypeMeta: metav1.TypeMeta{Kind: "FooList", APIVersion: "hello.zeng.dev/v1"},
 	}
 	for _, f := range foos {
 		flist.Items = append(flist.Items, f)
@@ -174,10 +202,12 @@ func PostFoo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if _, ok := foos[f.Name]; ok { // already exists
-		w.WriteHeader(http.StatusConflict)
+		writeErrStatus(w, f.Name, http.StatusConflict)
+		return
 	}
 
 	foos[f.Name] = f
+	renderJSON(w, f) // follow official API, return the created object
 }
 
 func PutFoo(w http.ResponseWriter, r *http.Request, name string) {
@@ -190,22 +220,38 @@ func PutFoo(w http.ResponseWriter, r *http.Request, name string) {
 	}
 
 	if _, ok := foos[name]; !ok { // not exists
-		w.WriteHeader(http.StatusNotFound)
+		writeErrStatus(w, name, http.StatusNotFound)
+		return
 	}
 	foos[f.Name] = f
+	renderJSON(w, f) // follow official API, return the updated object
 }
 
 func DeleteFoo(w http.ResponseWriter, _ *http.Request, name string) {
-	if _, ok := foos[name]; !ok { // not exists
-		w.WriteHeader(http.StatusNotFound)
+	if f, ok := foos[name]; !ok { // not exists
+		writeErrStatus(w, name, http.StatusNotFound)
+		return
+	} else {
+		delete(foos, name)
+		now := metav1.Now()
+		var noWait int64 = 0
+		f.DeletionTimestamp = &now
+		f.DeletionGracePeriodSeconds = &noWait
+		renderJSON(w, f) // follow official API, return the deleted object
 	}
-	delete(foos, name)
 }
 
-func Hello(w http.ResponseWriter, r *http.Request) {
-	rr, _ := httputil.DumpRequest(r, true)
-	log.Println("rx", string(rr))
+func logHandler(ha http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rr, _ := httputil.DumpRequest(r, true)
+		log.Println("rx", string(rr))
+		ha.ServeHTTP(w, r)
+	})
+}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(`{"msg": "hello world"}`))
+func ContentTypeJSONHandler(ha http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		ha.ServeHTTP(w, r)
+	})
 }

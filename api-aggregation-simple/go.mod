@@ -1,4 +1,4 @@
-module github.com/phosae/k8s-api-server/api-aggregation-simple
+module github.com/phosae/x-kubernetes/api-aggregation-simple
 
 go 1.20
 

@@ -2,8 +2,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app: api-hello
-  name: api-hello
+    app: api-scratch
+  name: api-scratch
   namespace: default
 spec:
   progressDeadlineSeconds: 600
@@ -11,7 +11,7 @@ spec:
   revisionHistoryLimit: 10
   selector:
     matchLabels:
-      app: api-hello
+      app: api-scratch
   strategy:
     rollingUpdate:
       maxSurge: 25%
@@ -20,10 +20,11 @@ spec:
   template:
     metadata:
       labels:
-        app: api-hello
+        app: api-scratch
     spec:
       containers:
-        - image: zengxu/api-aggregation-simple-4aab778c325a67e796bbe3f4966dcbaf
+        #- image: zengxu/api-aggregation-simple
+        - image: ko://github.com/phosae/x-kubernetes/api-aggregation-simple
           imagePullPolicy: Always
           name: apiserver
           env:
@@ -42,15 +43,15 @@ apiVersion: v1
 kind: Service
 metadata:
   labels:
-    app: api-hello
-  name: api-hello
+    app: api-scratch
+  name: api-scratch
 spec:
   ports:
     - port: 443
       protocol: TCP
       targetPort: 8443
   selector:
-    app: api-hello
+    app: api-scratch
 ---
 apiVersion: v1
 data:
@@ -65,13 +66,13 @@ type: Opaque
 apiVersion: apiregistration.k8s.io/v1
 kind: APIService
 metadata:
-  name: v1beta1.hello.zeng.dev
+  name: v1.hello.zeng.dev
 spec:
   service:
-    name: api-hello
+    name: api-scratch
     namespace: default
   group: hello.zeng.dev
-  version: v1beta1
+  version: v1
   insecureSkipTLSVerify: true
   groupPriorityMinimum: 100
   versionPriority: 100
