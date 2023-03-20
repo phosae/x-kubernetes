@@ -31,3 +31,16 @@ services:
     - ./pki:/etc/kubernetes/pki:ro
     links:
     - etcd
+  controller-manager:
+    hostname: controller-manager
+    image: registry.k8s.io/kube-controller-manager:v1.26.2
+    command: >
+      kube-controller-manager
+      --kubeconfig=/etc/kubernetes/pki/api.kubeconfig
+      --service-account-private-key-file=/etc/kubernetes/pki/sa-ecdsa.key
+      --v=4
+    volumes:
+    - ./pki:/etc/kubernetes/pki:ro
+    links:
+    - etcd
+    - apiserver
