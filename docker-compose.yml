@@ -26,6 +26,7 @@ services:
       --tls-private-key-file=/etc/kubernetes/pki/apiserver.key
       --service-node-port-range=30000-32767
       --allow-privileged
+      --runtime-config api/all=true
       --v=4
     volumes:
     - ./pki:/etc/kubernetes/pki:ro
