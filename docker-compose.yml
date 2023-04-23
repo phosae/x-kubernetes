@@ -30,7 +30,7 @@ services:
       --v=4
     volumes:
     - ./pki:/etc/kubernetes/pki:ro
-    links:
+    depends_on:
     - etcd
   controller-manager:
     hostname: controller-manager
@@ -42,6 +42,6 @@ services:
       --v=4
     volumes:
     - ./pki:/etc/kubernetes/pki:ro
-    links:
+    depends_on:
     - etcd
     - apiserver
