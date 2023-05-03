@@ -1,6 +1,7 @@
 package main
 
 import (
+	"embed"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -22,6 +23,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.Handle("/", logHandler(http.NotFoundHandler()))
 	mux.HandleFunc("/apis/hello.zeng.dev/v1", Apis)
+	mux.HandleFunc("/openapi/v2", OpenapiV2)
 
 	// LIST /apis/hello.zeng.dev/v1/namespaces/default/foos
 	// GET  /apis/hello.zeng.dev/v1/namespaces/default/foos/myfoo
@@ -41,27 +43,58 @@ func main() {
 	}
 }
 
-const apis = `kind: APIResourceList
-apiVersion: v1
-groupVersion: hello.zeng.dev/v1
-resources:
-- name: foos
-  singularName: ''
-  namespaced: true
-  kind: Foo
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - update
-  shortNames:
-  - foo
-  categories:
-  - all`
+//go:embed docs/*
+var embedFS embed.FS
 
+// Get APIResourceList
+//
+//	@Summary		Get APIResourceList for group version 'hello.zeng.dev/v1'
+//	@Description	List APIResource Info about group version 'hello.zeng.dev/v1'
+//	@Produce		json
+//	@Success		200	{string} apis
+//	@Router			/apis/hello.zeng.dev/v1 [get]
+func OpenapiV2(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	json, _ := embedFS.ReadFile("docs/swagger.json")
+	w.Write([]byte(json))
+}
+
+const apis = `{
+  "kind": "APIResourceList",
+  "apiVersion": "v1",
+  "groupVersion": "hello.zeng.dev/v1",
+  "resources": [
+    {
+      "name": "foos",
+      "singularName": "",
+      "namespaced": true,
+      "kind": "Foo",
+      "verbs": [
+        "create",
+        "delete",
+        "get",
+        "list",
+        "update"
+      ],
+      "shortNames": [
+        "foo"
+      ],
+      "categories": [
+        "all"
+      ]
+    }
+  ]
+}`
+
+// Get APIResourceList
+//
+//	@Summary		Get APIResourceList for group version 'hello.zeng.dev/v1'
+//	@Description	List APIResource Info about group version 'hello.zeng.dev/v1'
+//	@Produce		json
+//	@Success		200	{string} apis
+//	@Router			/apis/hello.zeng.dev/v1 [get]
 func Apis(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Content-Type", "application/yaml")
+	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(apis))
 }
 
@@ -173,6 +206,15 @@ func writeErrStatus(w http.ResponseWriter, name string, status int) {
 	w.WriteHeader(status)
 }
 
+// GetFoo swag doc
+// @Summary      Get an Foo Object
+// @Description  Get an Foo by Resource Name
+// @Tags         foos
+// @Produce      json
+// @Param        namespace	path	string  true  "Namepsace"
+// @Param        name	path	string  true  "Resource Name"
+// @Success      200  {object}  Foo
+// @Router       /apis/hello.zeng.dev/v1/namespaces/{namespace}/foos/{name} [get]
 func GetFoo(w http.ResponseWriter, _ *http.Request, name string) {
 	f, ok := foos[name]
 	if !ok {
@@ -182,6 +224,14 @@ func GetFoo(w http.ResponseWriter, _ *http.Request, name string) {
 	renderJSON(w, f)
 }
 
+// GetAllFoos swag doc
+// @Summary      List all Foos
+// @Description  List all Foos
+// @Tags         foos
+// @Produce      json
+// @Param        namespace	path	string  true  "Namepsace"
+// @Success      200  {object}  Foo
+// @Router       /apis/hello.zeng.dev/v1/namespaces/{namespace}/foos [get]
 func GetAllFoos(w http.ResponseWriter, _ *http.Request) {
 	flist := FooList{
 		TypeMeta: metav1.TypeMeta{Kind: "FooList", APIVersion: "hello.zeng.dev/v1"},
@@ -192,6 +242,15 @@ func GetAllFoos(w http.ResponseWriter, _ *http.Request) {
 	renderJSON(w, flist)
 }
 
+// PostFoo swag doc
+// @Summary      Create a Foo Object
+// @Description  Create a Foo Object
+// @Tags         foos
+// @Consume      json
+// @Produce      json
+// @Param        namespace	path	string  true  "Namepsace"
+// @Success      201  {object}  Foo
+// @Router       /apis/hello.zeng.dev/v1/namespaces/{namespace}/foos [post]
 func PostFoo(w http.ResponseWriter, r *http.Request) {
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
@@ -207,9 +266,21 @@ func PostFoo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	foos[f.Name] = f
+	w.WriteHeader(http.StatusCreated)
 	renderJSON(w, f) // follow official API, return the created object
 }
 
+// PutFoo swag doc
+// @Summary      Replace a Foo Object
+// @Description  Replace a Foo Object by Creation or Update
+// @Tags         foos
+// @Consume      json
+// @Produce      json
+// @Param        namespace	path	string  true  "Namepsace"
+// @Param        name	path	string  true  "Resource Name"
+// @Success      201  {object}  Foo	"created"
+// @Success      200  {object}  Foo "updated"
+// @Router       /apis/hello.zeng.dev/v1/namespaces/{namespace}/foos/{name} [put]
 func PutFoo(w http.ResponseWriter, r *http.Request, name string) {
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
@@ -220,13 +291,21 @@ func PutFoo(w http.ResponseWriter, r *http.Request, name string) {
 	}
 
 	if _, ok := foos[name]; !ok { // not exists
-		writeErrStatus(w, name, http.StatusNotFound)
-		return
+		w.WriteHeader(http.StatusCreated)
 	}
 	foos[f.Name] = f
-	renderJSON(w, f) // follow official API, return the updated object
+	renderJSON(w, f) // follow official API, return the replacement
 }
 
+// DeleteFoo swag doc
+// @Summary      Delete a Foo Object
+// @Description  Delete a Foo Object by name in some Namespace
+// @Tags         foos
+// @Produce      json
+// @Param        namespace	path	string  true  "Namepsace"
+// @Param        name	path	string  true  "Resource Name"
+// @Success      200  {object}  Foo "deleted"
+// @Router       /apis/hello.zeng.dev/v1/namespaces/{namespace}/foos/{name} [delete]
 func DeleteFoo(w http.ResponseWriter, _ *http.Request, name string) {
 	if f, ok := foos[name]; !ok { // not exists
 		writeErrStatus(w, name, http.StatusNotFound)
