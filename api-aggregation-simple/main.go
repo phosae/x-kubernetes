@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"encoding/json"
 	"fmt"
@@ -25,12 +26,13 @@ func main() {
 	mux.HandleFunc("/apis/hello.zeng.dev/v1", Apis)
 	mux.HandleFunc("/openapi/v2", OpenapiV2)
 
-	// LIST /apis/hello.zeng.dev/v1/namespaces/default/foos
-	// GET  /apis/hello.zeng.dev/v1/namespaces/default/foos/myfoo
-	// POST /apis/hello.zeng.dev/v1/namespaces/default/foos/
-	// PUT  /apis/hello.zeng.dev/v1/namespaces/default/foos/myfoo
-	// DEL  /apis/hello.zeng.dev/v1/namespaces/default/foos/myfoo
-	mux.Handle("/apis/hello.zeng.dev/v1/namespaces/", logHandler(ContentTypeJSONHandler(http.HandlerFunc(fooHandler)))) // ends with '/' for prefix matching...
+	// LIST /apis/hello.zeng.dev/v1/foos
+	// LIST /apis/hello.zeng.dev/v1/namespaces/{namespace}/foos
+	// GET  /apis/hello.zeng.dev/v1/namespaces/{namespace}/foos/{name}
+	// POST /apis/hello.zeng.dev/v1/namespaces/{namespace}/foos/
+	// PUT  /apis/hello.zeng.dev/v1/namespaces/{namespace}/foos/{name}
+	// DEL  /apis/hello.zeng.dev/v1/namespaces/{namespace}/foos/{name}
+	mux.Handle("/apis/hello.zeng.dev/v1/", logHandler(ContentTypeJSONHandler(http.HandlerFunc(fooHandler)))) // ends with '/' for prefix matching...
 
 	if certDir := os.Getenv("CERT_DIR"); certDir != "" {
 		certFile := filepath.Join(certDir, tlsCertName)
@@ -52,7 +54,7 @@ var embedFS embed.FS
 //	@Description	List APIResource Info about group version 'hello.zeng.dev/v1'
 //	@Produce		json
 //	@Success		200	{string} apis
-//	@Router			/apis/hello.zeng.dev/v1 [get]
+//	@Router			/openapi/v2 [get]
 func OpenapiV2(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json, _ := embedFS.ReadFile("docs/swagger.json")
@@ -130,7 +132,7 @@ type FooList struct {
 var foos = map[string]Foo{}
 
 func init() {
-	foos["bar"] = Foo{
+	foos["default/bar"] = Foo{
 		TypeMeta:   metav1.TypeMeta{APIVersion: "hello.zeng.dev/v1", Kind: "Foo"},
 		ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "bar"},
 		Spec: struct {
@@ -141,19 +143,29 @@ func init() {
 	}
 }
 
+type ctxkey string
+
 func fooHandler(w http.ResponseWriter, r *http.Request) {
-	nsResource := strings.TrimLeft(r.URL.Path, "/apis/hello.zeng.dev/v1/namespaces/")
+	nsResource := strings.TrimPrefix(r.URL.Path, "/apis/hello.zeng.dev/v1/namespaces/")
+
+	if nsResource == r.URL.Path && r.URL.Path == "/apis/hello.zeng.dev/v1/foos" {
+		GetAllFoos(w, r)
+		return
+	}
+
 	parts := strings.Split(nsResource, "/")
-	if len(parts) == 2 { // GET/POST default/foos
+	if len(parts) == 2 { // GET/POST {namespace}/foos
+		r = r.WithContext(context.WithValue(r.Context(), ctxkey("namespace"), parts[0]))
 		switch r.Method {
 		case http.MethodGet:
-			GetAllFoos(w, r)
+			GetAllFoosInNamespace(w, r)
 		case http.MethodPost:
 			PostFoo(w, r)
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
-	} else if len(parts) == 3 { // GET/PUT/DELETE default/foos/myfoo
+	} else if len(parts) == 3 { // GET/PUT/DELETE {namespace}/foos/{fooname}
+		r = r.WithContext(context.WithValue(r.Context(), ctxkey("namespace"), parts[0]))
 		name := parts[2]
 		switch r.Method {
 		case http.MethodGet:
@@ -215,13 +227,36 @@ func writeErrStatus(w http.ResponseWriter, name string, status int) {
 // @Param        name	path	string  true  "Resource Name"
 // @Success      200  {object}  Foo
 // @Router       /apis/hello.zeng.dev/v1/namespaces/{namespace}/foos/{name} [get]
-func GetFoo(w http.ResponseWriter, _ *http.Request, name string) {
-	f, ok := foos[name]
+func GetFoo(w http.ResponseWriter, r *http.Request, name string) {
+	ns := r.Context().Value(ctxkey("namespace"))
+	nsname := fmt.Sprintf("%s/%s", ns, name)
+
+	f, ok := foos[nsname]
 	if !ok {
-		writeErrStatus(w, name, http.StatusNotFound)
+		writeErrStatus(w, nsname, http.StatusNotFound)
 		return
 	}
 	renderJSON(w, f)
+}
+
+// GetAllFoosInNamespace swag doc
+// @Summary      List all Foos in some namespace
+// @Description  List all Foos in some namespace
+// @Tags         foos
+// @Produce      json
+// @Param        namespace	path	string  true  "Namepsace"
+// @Success      200  {object}  FooList
+// @Router       /apis/hello.zeng.dev/v1/namespaces/{namespace}/foos [get]
+func GetAllFoosInNamespace(w http.ResponseWriter, r *http.Request) {
+	flist := FooList{
+		TypeMeta: metav1.TypeMeta{Kind: "FooList", APIVersion: "hello.zeng.dev/v1"},
+	}
+	for _, f := range foos {
+		if f.Namespace == r.Context().Value(ctxkey("namespace")) {
+			flist.Items = append(flist.Items, f)
+		}
+	}
+	renderJSON(w, flist)
 }
 
 // GetAllFoos swag doc
@@ -229,9 +264,8 @@ func GetFoo(w http.ResponseWriter, _ *http.Request, name string) {
 // @Description  List all Foos
 // @Tags         foos
 // @Produce      json
-// @Param        namespace	path	string  true  "Namepsace"
-// @Success      200  {object}  Foo
-// @Router       /apis/hello.zeng.dev/v1/namespaces/{namespace}/foos [get]
+// @Success      200  {object}  FooList
+// @Router       /apis/hello.zeng.dev/v1/foos [get]
 func GetAllFoos(w http.ResponseWriter, _ *http.Request) {
 	flist := FooList{
 		TypeMeta: metav1.TypeMeta{Kind: "FooList", APIVersion: "hello.zeng.dev/v1"},
@@ -260,12 +294,15 @@ func PostFoo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, ok := foos[f.Name]; ok { // already exists
+	ns := r.Context().Value(ctxkey("namespace"))
+	nsname := fmt.Sprintf("%s/%s", ns, f.Name)
+
+	if _, ok := foos[nsname]; ok { // already exists
 		writeErrStatus(w, f.Name, http.StatusConflict)
 		return
 	}
 
-	foos[f.Name] = f
+	foos[nsname] = f
 	w.WriteHeader(http.StatusCreated)
 	renderJSON(w, f) // follow official API, return the created object
 }
@@ -290,10 +327,13 @@ func PutFoo(w http.ResponseWriter, r *http.Request, name string) {
 		return
 	}
 
-	if _, ok := foos[name]; !ok { // not exists
+	ns := r.Context().Value(ctxkey("namespace"))
+	nsname := fmt.Sprintf("%s/%s", ns, f.Name)
+
+	if _, ok := foos[nsname]; !ok { // not exists
 		w.WriteHeader(http.StatusCreated)
 	}
-	foos[f.Name] = f
+	foos[nsname] = f
 	renderJSON(w, f) // follow official API, return the replacement
 }
 
@@ -306,12 +346,15 @@ func PutFoo(w http.ResponseWriter, r *http.Request, name string) {
 // @Param        name	path	string  true  "Resource Name"
 // @Success      200  {object}  Foo "deleted"
 // @Router       /apis/hello.zeng.dev/v1/namespaces/{namespace}/foos/{name} [delete]
-func DeleteFoo(w http.ResponseWriter, _ *http.Request, name string) {
-	if f, ok := foos[name]; !ok { // not exists
-		writeErrStatus(w, name, http.StatusNotFound)
+func DeleteFoo(w http.ResponseWriter, r *http.Request, name string) {
+	ns := r.Context().Value(ctxkey("namespace"))
+	nsname := fmt.Sprintf("%s/%s", ns, name)
+
+	if f, ok := foos[nsname]; !ok { // not exists
+		writeErrStatus(w, nsname, http.StatusNotFound)
 		return
 	} else {
-		delete(foos, name)
+		delete(foos, nsname)
 		now := metav1.Now()
 		var noWait int64 = 0
 		f.DeletionTimestamp = &now

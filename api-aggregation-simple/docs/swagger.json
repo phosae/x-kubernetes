@@ -21,7 +21,7 @@
                 }
             }
         },
-        "/apis/hello.zeng.dev/v1/namespaces/{namespace}/foos": {
+        "/apis/hello.zeng.dev/v1/foos": {
             "get": {
                 "description": "List all Foos",
                 "produces": [
@@ -31,6 +31,26 @@
                     "foos"
                 ],
                 "summary": "List all Foos",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.FooList"
+                        }
+                    }
+                }
+            }
+        },
+        "/apis/hello.zeng.dev/v1/namespaces/{namespace}/foos": {
+            "get": {
+                "description": "List all Foos in some namespace",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "foos"
+                ],
+                "summary": "List all Foos in some namespace",
                 "parameters": [
                     {
                         "type": "string",
@@ -44,7 +64,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/main.Foo"
+                            "$ref": "#/definitions/main.FooList"
                         }
                     }
                 }
@@ -186,6 +206,23 @@
                     }
                 }
             }
+        },
+        "/openapi/v2": {
+            "get": {
+                "description": "List APIResource Info about group version 'hello.zeng.dev/v1'",
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Get APIResourceList for group version 'hello.zeng.dev/v1'",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -213,8 +250,51 @@
                 }
             }
         },
+        "main.FooList": {
+            "type": "object",
+            "properties": {
+                "apiVersion": {
+                    "description": "APIVersion defines the versioned schema of this representation of an object.\nServers should convert recognized schemas to the latest internal value, and\nmay reject unrecognized values.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources\n+optional",
+                    "type": "string"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/main.Foo"
+                    }
+                },
+                "kind": {
+                    "description": "Kind is a string value representing the REST resource this object represents.\nServers may infer this from the endpoint the client submits requests to.\nCannot be updated.\nIn CamelCase.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds\n+optional",
+                    "type": "string"
+                },
+                "metadata": {
+                    "$ref": "#/definitions/v1.ListMeta"
+                }
+            }
+        },
         "v1.FieldsV1": {
             "type": "object"
+        },
+        "v1.ListMeta": {
+            "type": "object",
+            "properties": {
+                "continue": {
+                    "description": "continue may be set if the user set a limit on the number of items returned, and indicates that\nthe server has more data available. The value is opaque and may be used to issue another request\nto the endpoint that served this list to retrieve the next set of available objects. Continuing a\nconsistent list may not be possible if the server configuration has changed or more than a few\nminutes have passed. The resourceVersion field returned when using this continue value will be\nidentical to the value in the first response, unless you have received this token from an error\nmessage.",
+                    "type": "string"
+                },
+                "remainingItemCount": {
+                    "description": "remainingItemCount is the number of subsequent items in the list which are not included in this\nlist response. If the list request contained label or field selectors, then the number of\nremaining items is unknown and the field will be left unset and omitted during serialization.\nIf the list is complete (either because it is not chunking or because this is the last chunk),\nthen there are no more remaining items and this field will be left unset and omitted during\nserialization.\nServers older than v1.15 do not set this field.\nThe intended use of the remainingItemCount is *estimating* the size of a collection. Clients\nshould not rely on the remainingItemCount to be set or to be exact.\n+optional",
+                    "type": "integer"
+                },
+                "resourceVersion": {
+                    "description": "String that identifies the server's internal version of this object that\ncan be used by clients to determine when objects have changed.\nValue must be treated as opaque by clients and passed unmodified back to the server.\nPopulated by the system.\nRead-only.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency\n+optional",
+                    "type": "string"
+                },
+                "selfLink": {
+                    "description": "Deprecated: selfLink is a legacy read-only field that is no longer populated by the system.\n+optional",
+                    "type": "string"
+                }
+            }
         },
         "v1.ManagedFieldsEntry": {
             "type": "object",
