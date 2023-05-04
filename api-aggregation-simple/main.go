@@ -13,10 +13,12 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	jsonpatch "github.com/evanphx/json-patch"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kruntime "k8s.io/apimachinery/pkg/runtime"
+	durationutil "k8s.io/apimachinery/pkg/util/duration"
 	kstrategicpatch "k8s.io/apimachinery/pkg/util/strategicpatch"
 )
 
@@ -129,6 +131,11 @@ type Foo struct {
 	} `json:"spec"`
 }
 
+func (f *Foo) DeepCopyObject() kruntime.Object {
+	cf := *f
+	return &cf
+}
+
 type FooList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
@@ -141,7 +148,7 @@ var foos = map[string]Foo{}
 func init() {
 	foos["default/bar"] = Foo{
 		TypeMeta:   metav1.TypeMeta{APIVersion: "hello.zeng.dev/v1", Kind: "Foo"},
-		ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "bar"},
+		ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "bar", CreationTimestamp: metav1.Now()},
 		Spec: struct {
 			Msg  string "json:\"msg\""
 			Msg1 string "json:\"msg1\""
@@ -228,6 +235,62 @@ func writeErrStatus(w http.ResponseWriter, name string, status int, msg string) 
 	w.WriteHeader(status)
 }
 
+var fooCol = []metav1.TableColumnDefinition{
+	{Name: "Name", Type: "string", Format: "name", Description: metav1.ObjectMeta{}.SwaggerDoc()["name"]},
+	{Name: "Age", Type: "string", Description: metav1.ObjectMeta{}.SwaggerDoc()["creationTimestamp"]},
+	{Name: "Message", Type: "string", Format: "message", Description: "foo message"},
+	{Name: "Message1", Type: "string", Format: "message1", Description: "foo message plus"},
+}
+
+func foo2TableRow(f *Foo) []metav1.TableRow {
+	ts := "<unknown>"
+	if timestamp := f.CreationTimestamp; !timestamp.IsZero() {
+		ts = durationutil.HumanDuration(time.Since(timestamp.Time))
+	}
+	return []metav1.TableRow{
+		{
+			Object: kruntime.RawExtension{Object: f}, // get -A show NAMESPACE column
+			Cells:  []interface{}{f.Name, ts, f.Spec.Msg, f.Spec.Msg1},
+		},
+	}
+}
+
+func fooList2TableRows(f *FooList) (ret []metav1.TableRow) {
+	for idx := range f.Items {
+		ret = append(ret, foo2TableRow(&f.Items[idx])...)
+	}
+	return
+}
+
+// application/json;as=Table;v=v1;g=meta.k8s.io,application/json;as=Table;v=v1beta1;g=meta.k8s.io,application/json
+func tryConvert2Table(obj interface{}, acceptedContentType string) interface{} {
+	if strings.Contains(acceptedContentType, "application/json") && strings.Contains(acceptedContentType, "as=Table") {
+		switch typedObj := obj.(type) {
+		case Foo:
+			return metav1.Table{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Table",
+					APIVersion: "meta.k8s.io/v1",
+				},
+				ColumnDefinitions: fooCol,
+				Rows:              foo2TableRow(&typedObj),
+			}
+		case FooList:
+			return metav1.Table{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Table",
+					APIVersion: "meta.k8s.io/v1",
+				},
+				ColumnDefinitions: fooCol,
+				Rows:              fooList2TableRows(&typedObj),
+			}
+		default:
+			return obj
+		}
+	}
+	return obj
+}
+
 // GetFoo swag doc
 // @Summary      Get an Foo Object
 // @Description  Get an Foo by Resource Name
@@ -246,7 +309,7 @@ func GetFoo(w http.ResponseWriter, r *http.Request, name string) {
 		writeErrStatus(w, nsname, http.StatusNotFound, "")
 		return
 	}
-	renderJSON(w, f)
+	renderJSON(w, tryConvert2Table(f, r.Header.Get("Accept")))
 }
 
 // GetAllFoosInNamespace swag doc
@@ -266,7 +329,7 @@ func GetAllFoosInNamespace(w http.ResponseWriter, r *http.Request) {
 			flist.Items = append(flist.Items, f)
 		}
 	}
-	renderJSON(w, flist)
+	renderJSON(w, tryConvert2Table(flist, r.Header.Get("Accept")))
 }
 
 // GetAllFoos swag doc
@@ -276,14 +339,14 @@ func GetAllFoosInNamespace(w http.ResponseWriter, r *http.Request) {
 // @Produce      json
 // @Success      200  {object}  FooList
 // @Router       /apis/hello.zeng.dev/v1/foos [get]
-func GetAllFoos(w http.ResponseWriter, _ *http.Request) {
+func GetAllFoos(w http.ResponseWriter, r *http.Request) {
 	flist := FooList{
 		TypeMeta: metav1.TypeMeta{Kind: "FooList", APIVersion: "hello.zeng.dev/v1"},
 	}
 	for _, f := range foos {
 		flist.Items = append(flist.Items, f)
 	}
-	renderJSON(w, flist)
+	renderJSON(w, tryConvert2Table(flist, r.Header.Get("Accept")))
 }
 
 // PostFoo swag doc
@@ -303,6 +366,7 @@ func PostFoo(w http.ResponseWriter, r *http.Request) {
 		writeErrStatus(w, "", http.StatusBadRequest, err.Error())
 		return
 	}
+	f.CreationTimestamp = metav1.Now()
 
 	ns := r.Context().Value(ctxkey("namespace"))
 	nsname := fmt.Sprintf("%s/%s", ns, f.Name)
