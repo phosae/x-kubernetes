@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"embed"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/http/httputil"
@@ -12,7 +14,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	jsonpatch "github.com/evanphx/json-patch"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kruntime "k8s.io/apimachinery/pkg/runtime"
+	kstrategicpatch "k8s.io/apimachinery/pkg/util/strategicpatch"
 )
 
 const (
@@ -110,7 +115,8 @@ func Apis(w http.ResponseWriter, _ *http.Request) {
 //	    "namespace": "default"
 //	  },
 //	  "spec": {
-//	    "msg": "%s"
+//	    "msg": "%s",
+//	    "msg1": "%s"
 //	  }
 //	}`
 type Foo struct {
@@ -118,7 +124,8 @@ type Foo struct {
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	Spec struct {
-		Msg string `json:"msg"`
+		Msg  string `json:"msg"`
+		Msg1 string `json:"msg1"`
 	} `json:"spec"`
 }
 
@@ -136,7 +143,8 @@ func init() {
 		TypeMeta:   metav1.TypeMeta{APIVersion: "hello.zeng.dev/v1", Kind: "Foo"},
 		ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "bar"},
 		Spec: struct {
-			Msg string "json:\"msg\""
+			Msg  string "json:\"msg\""
+			Msg1 string "json:\"msg1\""
 		}{
 			Msg: "hello world",
 		},
@@ -172,6 +180,8 @@ func fooHandler(w http.ResponseWriter, r *http.Request) {
 			GetFoo(w, r, name)
 		case http.MethodPut:
 			PutFoo(w, r, name)
+		case http.MethodPatch:
+			PatchFoo(w, r, name)
 		case http.MethodDelete:
 			DeleteFoo(w, r, name)
 		default:
@@ -186,7 +196,7 @@ func fooHandler(w http.ResponseWriter, r *http.Request) {
 func renderJSON(w http.ResponseWriter, v interface{}) {
 	js, err := json.Marshal(v)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		writeErrStatus(w, "", http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -204,7 +214,7 @@ const kstatusTmplate = `{
 	"code":%d
 }`
 
-func writeErrStatus(w http.ResponseWriter, name string, status int) {
+func writeErrStatus(w http.ResponseWriter, name string, status int, msg string) {
 	var errStatus string
 	switch status {
 	case http.StatusNotFound:
@@ -212,7 +222,7 @@ func writeErrStatus(w http.ResponseWriter, name string, status int) {
 	case http.StatusConflict:
 		errStatus = fmt.Sprintf(kstatusTmplate, fmt.Sprintf(`foos '%s' already exists`, name), http.StatusText(http.StatusConflict), name, http.StatusConflict)
 	default:
-		errStatus = "{}"
+		errStatus = fmt.Sprintf(kstatusTmplate, msg, http.StatusText(status), name, status)
 	}
 	w.Write([]byte(errStatus))
 	w.WriteHeader(status)
@@ -233,7 +243,7 @@ func GetFoo(w http.ResponseWriter, r *http.Request, name string) {
 
 	f, ok := foos[nsname]
 	if !ok {
-		writeErrStatus(w, nsname, http.StatusNotFound)
+		writeErrStatus(w, nsname, http.StatusNotFound, "")
 		return
 	}
 	renderJSON(w, f)
@@ -290,7 +300,7 @@ func PostFoo(w http.ResponseWriter, r *http.Request) {
 	dec.DisallowUnknownFields()
 	var f Foo
 	if err := dec.Decode(&f); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		writeErrStatus(w, "", http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -298,7 +308,7 @@ func PostFoo(w http.ResponseWriter, r *http.Request) {
 	nsname := fmt.Sprintf("%s/%s", ns, f.Name)
 
 	if _, ok := foos[nsname]; ok { // already exists
-		writeErrStatus(w, f.Name, http.StatusConflict)
+		writeErrStatus(w, nsname, http.StatusConflict, "")
 		return
 	}
 
@@ -319,22 +329,109 @@ func PostFoo(w http.ResponseWriter, r *http.Request) {
 // @Success      200  {object}  Foo "updated"
 // @Router       /apis/hello.zeng.dev/v1/namespaces/{namespace}/foos/{name} [put]
 func PutFoo(w http.ResponseWriter, r *http.Request, name string) {
+	ns := r.Context().Value(ctxkey("namespace"))
+	nsname := fmt.Sprintf("%s/%s", ns, name)
+
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
 	var f Foo
 	if err := dec.Decode(&f); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		writeErrStatus(w, nsname, http.StatusBadRequest, err.Error())
 		return
 	}
-
-	ns := r.Context().Value(ctxkey("namespace"))
-	nsname := fmt.Sprintf("%s/%s", ns, f.Name)
 
 	if _, ok := foos[nsname]; !ok { // not exists
 		w.WriteHeader(http.StatusCreated)
 	}
 	foos[nsname] = f
 	renderJSON(w, f) // follow official API, return the replacement
+}
+
+// PatchFoo swag doc
+// @Summary      partially update the specified Foo
+// @Description  partially update the specified Foo
+// @Tags         foos
+// @Consume      json
+// @Produce      json
+// @Param        namespace	path	string  true  "Namepsace"
+// @Param        name	path	string  true  "Resource Name"
+// @Success      200  {object}  Foo "OK"
+// @Router       /apis/hello.zeng.dev/v1/namespaces/{namespace}/foos/{name} [patch]
+func PatchFoo(w http.ResponseWriter, r *http.Request, name string) {
+	ns := r.Context().Value(ctxkey("namespace"))
+	nsname := fmt.Sprintf("%s/%s", ns, name)
+
+	patchBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		writeErrStatus(w, nsname, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	var originalObjMap map[string]interface{}
+	var originalBytes []byte
+	var schema Foo
+	if old, ok := foos[nsname]; !ok { // not exists
+		w.WriteHeader(http.StatusNotFound)
+		return
+	} else {
+		schema = old
+		originalBytes, _ = json.Marshal(old)
+		originalObjMap, _ = kruntime.DefaultUnstructuredConverter.ToUnstructured(&old)
+	}
+
+	var patchedFoo []byte
+	switch r.Header.Get("Content-Type") {
+	case "application/merge-patch+json":
+		patchedFoo, err = jsonpatch.MergePatch(originalBytes, patchBytes)
+		if err != nil {
+			writeErrStatus(w, nsname, http.StatusBadRequest, err.Error())
+			return
+		}
+	case "application/json-patch+json":
+		patch, err := jsonpatch.DecodePatch(patchBytes)
+		if err != nil {
+			writeErrStatus(w, nsname, http.StatusBadRequest, err.Error())
+			return
+		}
+		patchedFoo, err = patch.Apply(originalBytes)
+		if err != nil {
+			writeErrStatus(w, nsname, http.StatusBadRequest, err.Error())
+			return
+		}
+	case "application/strategic-merge-patch+json":
+		var patchMap map[string]interface{}
+		if err = json.Unmarshal(patchBytes, &patchMap); err != nil {
+			writeErrStatus(w, nsname, http.StatusBadRequest, err.Error())
+			return
+		}
+		fmt.Println("orig map", originalObjMap)
+		if patchedObjMap, err := kstrategicpatch.StrategicMergeMapPatch(originalObjMap, patchMap, schema); err != nil {
+			writeErrStatus(w, nsname, http.StatusBadRequest, err.Error())
+			return
+		} else {
+			var theFoo Foo
+			fmt.Println("patched map", patchedObjMap)
+			if err = kruntime.DefaultUnstructuredConverter.FromUnstructuredWithValidation(patchedObjMap, &theFoo, false); err != nil {
+				writeErrStatus(w, nsname, http.StatusBadRequest, err.Error())
+				return
+			} else {
+				patchedFoo, _ = json.Marshal(theFoo)
+			}
+		}
+	default:
+		w.WriteHeader(http.StatusUnsupportedMediaType)
+		return
+	}
+
+	dec := json.NewDecoder(bytes.NewReader(patchedFoo))
+	dec.DisallowUnknownFields()
+	var f Foo
+	if err := dec.Decode(&f); err != nil {
+		writeErrStatus(w, nsname, http.StatusBadRequest, err.Error())
+		return
+	}
+	foos[nsname] = f
+	renderJSON(w, f)
 }
 
 // DeleteFoo swag doc
@@ -351,7 +448,7 @@ func DeleteFoo(w http.ResponseWriter, r *http.Request, name string) {
 	nsname := fmt.Sprintf("%s/%s", ns, name)
 
 	if f, ok := foos[nsname]; !ok { // not exists
-		writeErrStatus(w, nsname, http.StatusNotFound)
+		writeErrStatus(w, nsname, http.StatusNotFound, "")
 		return
 	} else {
 		delete(foos, nsname)

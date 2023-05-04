@@ -1,7 +1,6 @@
 apiVersion: hello.zeng.dev/v1
 kind: Foo
 metadata:
-  creationTimestamp: null
   name: myfoo
 spec:
   msg: my first foo
@@ -9,7 +8,6 @@ spec:
 apiVersion: hello.zeng.dev/v1
 kind: Foo
 metadata:
-  creationTimestamp: null
   name: myfoo
   namespace: kube-public
 spec:
@@ -18,7 +16,7 @@ spec:
 apiVersion: hello.zeng.dev/v1
 kind: Foo
 metadata:
-  creationTimestamp: null
   name: test
 spec:
   msg: testmsg
+  msg1: ''
