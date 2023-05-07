@@ -1,6 +1,7 @@
 go 1.20
 
 use (
+	./api-aggregation-lib
 	./api-aggregation-runtime
 	./api-aggregation-simple
 )
