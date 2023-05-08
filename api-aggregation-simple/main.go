@@ -126,7 +126,9 @@ type Foo struct {
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	Spec struct {
+		// Msg says hello world!
 		Msg  string `json:"msg"`
+		// Msg1 provides some verbose information
 		Msg1 string `json:"msg1"`
 	} `json:"spec"`
 }
