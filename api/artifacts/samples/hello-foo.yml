@@ -1,0 +1,22 @@
+apiVersion: hello.zeng.dev/v1
+kind: Foo
+metadata:
+  name: myfoo
+spec:
+  msg: my first foo
+---
+apiVersion: hello.zeng.dev/v1
+kind: Foo
+metadata:
+  name: myfoo
+  namespace: kube-public
+spec:
+  msg: my second foo
+---
+apiVersion: hello.zeng.dev/v1
+kind: Foo
+metadata:
+  name: test
+spec:
+  msg: testmsg
+  msg1: ''
