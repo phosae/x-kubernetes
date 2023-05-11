@@ -116,6 +116,7 @@ func NewHelloServerCommand(stopCh <-chan struct{}) *cobra.Command {
 	opts := &Options{
 		SecureServing: genericoptions.NewSecureServingOptions().WithLoopback(),
 	}
+	opts.SecureServing.BindPort = 6443
 
 	cmd := &cobra.Command{
 		Short: "Launch hello.zeng.dev-server",
