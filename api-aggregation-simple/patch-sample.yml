@@ -1,2 +1,0 @@
-spec: # kubectl patch foo/test --patch-file patch-sample.yml
-  msg1: hey, there, 👋

@@ -13,9 +13,12 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	jsonpatch "github.com/evanphx/json-patch"
+	openapi_v2 "github.com/google/gnostic/openapiv2"
+	"google.golang.org/protobuf/proto"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kruntime "k8s.io/apimachinery/pkg/runtime"
 	durationutil "k8s.io/apimachinery/pkg/util/duration"
@@ -23,14 +26,20 @@ import (
 )
 
 const (
-	tlsKeyName  = "tls.key"
-	tlsCertName = "tls.crt"
+	tlsKeyName  = "apiserver.key"
+	tlsCertName = "apiserver.crt"
 )
 
+// @title           hello.zeng.dev-server
+// @version         0.1
+// @description     K8s apiserver style http server from scratch
+// @BasePath  /apis
 func main() {
 	mux := http.NewServeMux()
 	mux.Handle("/", logHandler(http.NotFoundHandler()))
-	mux.HandleFunc("/apis/hello.zeng.dev/v1", Apis)
+	mux.HandleFunc("/apis", APIs)
+	mux.HandleFunc("/apis/hello.zeng.dev", APIGroupHelloV1)
+	mux.HandleFunc("/apis/hello.zeng.dev/v1", APIGroupHelloV1Resources)
 	mux.HandleFunc("/openapi/v2", OpenapiV2)
 
 	// LIST /apis/hello.zeng.dev/v1/foos
@@ -44,12 +53,98 @@ func main() {
 	if certDir := os.Getenv("CERT_DIR"); certDir != "" {
 		certFile := filepath.Join(certDir, tlsCertName)
 		keyFile := filepath.Join(certDir, tlsKeyName)
-		log.Println("serving https on 0.0.0.0:8443")
-		log.Fatal(http.ListenAndServeTLS(":8443", certFile, keyFile, mux))
+		log.Println("serving https on 0.0.0.0:6443")
+		log.Fatal(http.ListenAndServeTLS(":6443", certFile, keyFile, mux))
 	} else {
 		log.Println("serving http on 0.0.0.0:8000")
 		log.Fatal(http.ListenAndServe(":8000", mux))
 	}
+}
+
+var apis = metav1.APIGroupList{
+	TypeMeta: metav1.TypeMeta{
+		Kind:       "APIGroupList",
+		APIVersion: "v1",
+	},
+	Groups: []metav1.APIGroup{
+		{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "APIGroup",
+				APIVersion: "v1",
+			},
+			Name: "hello.zeng.dev",
+			Versions: []metav1.GroupVersionForDiscovery{
+				{
+					GroupVersion: "hello.zeng.dev/v1",
+					Version:      "v1",
+				},
+			},
+			PreferredVersion: metav1.GroupVersionForDiscovery{GroupVersion: "hello.zeng.dev/v1", Version: "v1"},
+		},
+	},
+}
+
+// List APIGroups
+//
+//	@Summary		List all APIGroups of this apiserver
+//	@Description	List all APIGroups of this apiserver
+//	@Produce		json
+//	@Success		200	{object} metav1.APIGroupList
+//	@Router			/apis [get]
+func APIs(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	renderJSON(w, apis)
+}
+
+// Get APIGroupHelloV1
+//
+//	@Summary		Get APIGroupHelloV1 info of 'hello.zeng.dev'
+//	@Description	Get APIGroupHelloV1 'hello.zeng.dev' detail, including version list and preferred version
+//	@Produce		json
+//	@Success		200	{object} metav1.APIGroup
+//	@Router			/apis/hello.zeng.dev [get]
+func APIGroupHelloV1(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	renderJSON(w, apis.Groups[0])
+}
+
+const hellov1Resources = `{
+	"kind": "APIResourceList",
+	"apiVersion": "v1",
+	"groupVersion": "hello.zeng.dev/v1",
+	"resources": [
+	  {
+		"name": "foos",
+		"singularName": "foo",
+		"namespaced": true,
+		"kind": "Foo",
+		"verbs": [
+		  "create",
+		  "delete",
+		  "get",
+		  "list",
+		  "update"
+		],
+		"shortNames": [
+		  "foo"
+		],
+		"categories": [
+		  "all"
+		]
+	  }
+	]
+  }`
+
+// Get APIGroupHelloV1Resources
+//
+//	@Summary		Get APIGroupHelloV1Resources for group version 'hello.zeng.dev/v1'
+//	@Description	List APIResource Info about group version 'hello.zeng.dev/v1'
+//	@Produce		json
+//	@Success		200	{string} hellov1Resources
+//	@Router			/apis/hello.zeng.dev/v1 [get]
+func APIGroupHelloV1Resources(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(hellov1Resources))
 }
 
 //go:embed docs/*
@@ -62,49 +157,34 @@ var embedFS embed.FS
 //	@Produce		json
 //	@Success		200	{string} apis
 //	@Router			/openapi/v2 [get]
-func OpenapiV2(w http.ResponseWriter, _ *http.Request) {
+func OpenapiV2(w http.ResponseWriter, r *http.Request) {
+	jsonbytes, _ := embedFS.ReadFile("docs/swagger.json")
+
+	// 😭 kubectl (v1.26.2, v1.27.1 ...) api discovery module (which fetch /openapi/v2, /openapi/v3)
+	//    only accept application/com.github.proto-openapi.spec.v2@v1.0+protobuf
+	if !strings.Contains(r.Header.Get("Accept"), "application/json") && strings.Contains(r.Header.Get("Accept"), "protobuf") {
+		w.Header().Set("Content-Type", "application/com.github.proto-openapi.spec.v2.v1.0+protobuf")
+		if pbbytes, err := ToProtoBinary(jsonbytes); err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			writeErrStatus(w, "", http.StatusInternalServerError, err.Error())
+			return
+		} else {
+			w.Write(pbbytes)
+			return
+		}
+	}
+
+	// 😄 kube apiserver aggregation module accept application/json
 	w.Header().Set("Content-Type", "application/json")
-	json, _ := embedFS.ReadFile("docs/swagger.json")
-	w.Write([]byte(json))
+	w.Write(jsonbytes)
 }
 
-const apis = `{
-  "kind": "APIResourceList",
-  "apiVersion": "v1",
-  "groupVersion": "hello.zeng.dev/v1",
-  "resources": [
-    {
-      "name": "foos",
-      "singularName": "",
-      "namespaced": true,
-      "kind": "Foo",
-      "verbs": [
-        "create",
-        "delete",
-        "get",
-        "list",
-        "update"
-      ],
-      "shortNames": [
-        "foo"
-      ],
-      "categories": [
-        "all"
-      ]
-    }
-  ]
-}`
-
-// Get APIResourceList
-//
-//	@Summary		Get APIResourceList for group version 'hello.zeng.dev/v1'
-//	@Description	List APIResource Info about group version 'hello.zeng.dev/v1'
-//	@Produce		json
-//	@Success		200	{string} apis
-//	@Router			/apis/hello.zeng.dev/v1 [get]
-func Apis(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(apis))
+func ToProtoBinary(json []byte) ([]byte, error) {
+	document, err := openapi_v2.ParseDocument(json)
+	if err != nil {
+		return nil, err
+	}
+	return proto.Marshal(document)
 }
 
 // Foo is some object like
@@ -127,7 +207,7 @@ type Foo struct {
 
 	Spec struct {
 		// Msg says hello world!
-		Msg  string `json:"msg"`
+		Msg string `json:"msg"`
 		// Msg1 provides some verbose information
 		Msg1 string `json:"msg1"`
 	} `json:"spec"`
@@ -145,6 +225,7 @@ type FooList struct {
 	Items []Foo `json:"items"`
 }
 
+var x sync.RWMutex
 var foos = map[string]Foo{}
 
 func init() {
@@ -233,8 +314,8 @@ func writeErrStatus(w http.ResponseWriter, name string, status int, msg string) 
 	default:
 		errStatus = fmt.Sprintf(kstatusTmplate, msg, http.StatusText(status), name, status)
 	}
-	w.Write([]byte(errStatus))
 	w.WriteHeader(status)
+	w.Write([]byte(errStatus))
 }
 
 var fooCol = []metav1.TableColumnDefinition{
@@ -306,6 +387,9 @@ func GetFoo(w http.ResponseWriter, r *http.Request, name string) {
 	ns := r.Context().Value(ctxkey("namespace"))
 	nsname := fmt.Sprintf("%s/%s", ns, name)
 
+	x.RLock()
+	defer x.RUnlock()
+
 	f, ok := foos[nsname]
 	if !ok {
 		writeErrStatus(w, nsname, http.StatusNotFound, "")
@@ -326,6 +410,10 @@ func GetAllFoosInNamespace(w http.ResponseWriter, r *http.Request) {
 	flist := FooList{
 		TypeMeta: metav1.TypeMeta{Kind: "FooList", APIVersion: "hello.zeng.dev/v1"},
 	}
+
+	x.RLock()
+	defer x.RUnlock()
+
 	for _, f := range foos {
 		if f.Namespace == r.Context().Value(ctxkey("namespace")) {
 			flist.Items = append(flist.Items, f)
@@ -345,6 +433,10 @@ func GetAllFoos(w http.ResponseWriter, r *http.Request) {
 	flist := FooList{
 		TypeMeta: metav1.TypeMeta{Kind: "FooList", APIVersion: "hello.zeng.dev/v1"},
 	}
+
+	x.RLock()
+	defer x.RUnlock()
+
 	for _, f := range foos {
 		flist.Items = append(flist.Items, f)
 	}
@@ -372,6 +464,9 @@ func PostFoo(w http.ResponseWriter, r *http.Request) {
 
 	ns := r.Context().Value(ctxkey("namespace"))
 	nsname := fmt.Sprintf("%s/%s", ns, f.Name)
+
+	x.Lock()
+	defer x.Unlock()
 
 	if _, ok := foos[nsname]; ok { // already exists
 		writeErrStatus(w, nsname, http.StatusConflict, "")
@@ -406,6 +501,9 @@ func PutFoo(w http.ResponseWriter, r *http.Request, name string) {
 		return
 	}
 
+	x.Lock()
+	defer x.Unlock()
+
 	if _, ok := foos[nsname]; !ok { // not exists
 		w.WriteHeader(http.StatusCreated)
 	}
@@ -432,6 +530,9 @@ func PatchFoo(w http.ResponseWriter, r *http.Request, name string) {
 		writeErrStatus(w, nsname, http.StatusBadRequest, err.Error())
 		return
 	}
+
+	x.Lock()
+	defer x.Unlock()
 
 	var originalObjMap map[string]interface{}
 	var originalBytes []byte
@@ -512,6 +613,9 @@ func PatchFoo(w http.ResponseWriter, r *http.Request, name string) {
 func DeleteFoo(w http.ResponseWriter, r *http.Request, name string) {
 	ns := r.Context().Value(ctxkey("namespace"))
 	nsname := fmt.Sprintf("%s/%s", ns, name)
+
+	x.Lock()
+	defer x.Unlock()
 
 	if f, ok := foos[nsname]; !ok { // not exists
 		writeErrStatus(w, nsname, http.StatusNotFound, "")

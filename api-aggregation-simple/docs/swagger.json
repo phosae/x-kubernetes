@@ -1,16 +1,54 @@
 {
     "swagger": "2.0",
     "info": {
-        "contact": {}
+        "description": "K8s apiserver style http server from scratch",
+        "title": "hello.zeng.dev-server",
+        "contact": {},
+        "version": "0.1"
     },
+    "basePath": "/apis",
     "paths": {
+        "/apis": {
+            "get": {
+                "description": "List all APIGroups of this apiserver",
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "List all APIGroups of this apiserver",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v1.APIGroupList"
+                        }
+                    }
+                }
+            }
+        },
+        "/apis/hello.zeng.dev": {
+            "get": {
+                "description": "Get APIGroupHelloV1 'hello.zeng.dev' detail, including version list and preferred version",
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Get APIGroupHelloV1 info of 'hello.zeng.dev'",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v1.APIGroup"
+                        }
+                    }
+                }
+            }
+        },
         "/apis/hello.zeng.dev/v1": {
             "get": {
                 "description": "List APIResource Info about group version 'hello.zeng.dev/v1'",
                 "produces": [
                     "application/json"
                 ],
-                "summary": "Get APIResourceList for group version 'hello.zeng.dev/v1'",
+                "summary": "Get APIGroupHelloV1Resources for group version 'hello.zeng.dev/v1'",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -311,8 +349,80 @@
                 }
             }
         },
+        "v1.APIGroup": {
+            "type": "object",
+            "properties": {
+                "apiVersion": {
+                    "description": "APIVersion defines the versioned schema of this representation of an object.\nServers should convert recognized schemas to the latest internal value, and\nmay reject unrecognized values.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources\n+optional",
+                    "type": "string"
+                },
+                "kind": {
+                    "description": "Kind is a string value representing the REST resource this object represents.\nServers may infer this from the endpoint the client submits requests to.\nCannot be updated.\nIn CamelCase.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds\n+optional",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "name is the name of the group.",
+                    "type": "string"
+                },
+                "preferredVersion": {
+                    "description": "preferredVersion is the version preferred by the API server, which\nprobably is the storage version.\n+optional",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/v1.GroupVersionForDiscovery"
+                        }
+                    ]
+                },
+                "serverAddressByClientCIDRs": {
+                    "description": "a map of client CIDR to server address that is serving this group.\nThis is to help clients reach servers in the most network-efficient way possible.\nClients can use the appropriate server address as per the CIDR that they match.\nIn case of multiple matches, clients should use the longest matching CIDR.\nThe server returns only those CIDRs that it thinks that the client can match.\nFor example: the master will return an internal IP CIDR only, if the client reaches the server using an internal IP.\nServer looks at X-Forwarded-For header or X-Real-Ip header or request.RemoteAddr (in that order) to get the client IP.\n+optional",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1.ServerAddressByClientCIDR"
+                    }
+                },
+                "versions": {
+                    "description": "versions are the versions supported in this group.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1.GroupVersionForDiscovery"
+                    }
+                }
+            }
+        },
+        "v1.APIGroupList": {
+            "type": "object",
+            "properties": {
+                "apiVersion": {
+                    "description": "APIVersion defines the versioned schema of this representation of an object.\nServers should convert recognized schemas to the latest internal value, and\nmay reject unrecognized values.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources\n+optional",
+                    "type": "string"
+                },
+                "groups": {
+                    "description": "groups is a list of APIGroup.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1.APIGroup"
+                    }
+                },
+                "kind": {
+                    "description": "Kind is a string value representing the REST resource this object represents.\nServers may infer this from the endpoint the client submits requests to.\nCannot be updated.\nIn CamelCase.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds\n+optional",
+                    "type": "string"
+                }
+            }
+        },
         "v1.FieldsV1": {
             "type": "object"
+        },
+        "v1.GroupVersionForDiscovery": {
+            "type": "object",
+            "properties": {
+                "groupVersion": {
+                    "description": "groupVersion specifies the API group and version in the form \"group/version\"",
+                    "type": "string"
+                },
+                "version": {
+                    "description": "version specifies the version in the form of \"version\". This is to save\nthe clients the trouble of splitting the GroupVersion.",
+                    "type": "string"
+                }
+            }
         },
         "v1.ListMeta": {
             "type": "object",
@@ -492,6 +602,19 @@
                 },
                 "uid": {
                     "description": "UID of the referent.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#uids",
+                    "type": "string"
+                }
+            }
+        },
+        "v1.ServerAddressByClientCIDR": {
+            "type": "object",
+            "properties": {
+                "clientCIDR": {
+                    "description": "The CIDR with which clients can match their IP to figure out the server address that they should use.",
+                    "type": "string"
+                },
+                "serverAddress": {
+                    "description": "Address of this server, suitable for a client that matches the above CIDR.\nThis can be a hostname, hostname:port, IP or IP:port.",
                     "type": "string"
                 }
             }
