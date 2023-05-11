@@ -1,4 +1,4 @@
-package registry
+package foo
 
 import (
 	"context"
@@ -24,7 +24,7 @@ type fooApi struct {
 	store map[string]*hellov1.Foo
 }
 
-func NewFooApi() *fooApi {
+func NewMemStore() *fooApi {
 	return &fooApi{
 		store: map[string]*hellov1.Foo{
 			"default/bar": {

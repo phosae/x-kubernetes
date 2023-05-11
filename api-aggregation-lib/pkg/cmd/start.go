@@ -7,10 +7,14 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	openapinamer "k8s.io/apiserver/pkg/endpoints/openapi"
 	"k8s.io/apiserver/pkg/features"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	genericoptions "k8s.io/apiserver/pkg/server/options"
+	serverstorage "k8s.io/apiserver/pkg/server/storage"
+	"k8s.io/apiserver/pkg/storage/storagebackend"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -20,22 +24,29 @@ import (
 
 	myapiserver "github.com/phosae/x-kubernetes/api-aggregation-lib/pkg/apiserver"
 	generatedopenapi "github.com/phosae/x-kubernetes/api/generated/openapi"
+	hellov1 "github.com/phosae/x-kubernetes/api/hello.zeng.dev/v1"
 )
 
+const defaultEtcdPathPrefix = "/registry/hello.zeng.dev"
+
 type Options struct {
-	// RecommendedOptions *genericoptions.RecommendedOptions // - EtcdOptions
 	SecureServing *genericoptions.SecureServingOptionsWithLoopback
 	Kubeconfig    string
 	Features      *genericoptions.FeatureOptions
+
+	EnableEtcdStorage bool
+	Etcd              *genericoptions.EtcdOptions
 }
 
 func (o *Options) Flags() (fs cliflag.NamedFlagSets) {
 	msfs := fs.FlagSet("hello.zeng.dev-server")
-	msfs.StringVar(&o.Kubeconfig, "kubeconfig", o.Kubeconfig, "The path to the kubeconfig used to connect to the Kubernetes API server and the Kubelets (defaults to in-cluster config)")
+	msfs.StringVar(&o.Kubeconfig, "kubeconfig", o.Kubeconfig, "The path to the kubeconfig used to connect to the Kubernetes API server (defaults to in-cluster config)")
 
 	o.SecureServing.AddFlags(fs.FlagSet("apiserver secure serving"))
 	o.Features.AddFlags(fs.FlagSet("features"))
 
+	msfs.BoolVar(&o.EnableEtcdStorage, "enable-etcd-storage", false, "If true, store objects in etcd")
+	o.Etcd.AddFlags(fs.FlagSet("Etcd"))
 	return fs
 }
 
@@ -56,13 +67,40 @@ func (o Options) ServerConfig() (*myapiserver.Config, error) {
 		return nil, err
 	}
 
-	//apiservercfg.ClientConfig, err = o.restConfig()
-	//if err != nil {
-	//	return nil, err
-	//}
+	if o.EnableEtcdStorage {
+		if err := o.Etcd.Complete(apiservercfg.Config.StorageObjectCountTracker, apiservercfg.Config.DrainedNotify(), apiservercfg.Config.AddPostStartHook); err != nil {
+			return nil, err
+		}
+
+		// set apiservercfg's RESTOptionsGetter as StorageFactoryRestOptionsFactory{..., StorageFactory: DefaultStorageFactory}
+		// like https://github.com/kubernetes/kubernetes/blob/e1ad9bee5bba8fbe85a6bf6201379ce8b1a611b1/cmd/kube-apiserver/app/server.go#L407-L415
+		// DefaultStorageFactory#NewConfig provides a way to negotiate StorageSerializer/DeSerializer by Etcd.DefaultStorageMediaType option
+		//
+		// DefaultStorageFactory's NewConfig will be called by interface genericregistry.RESTOptionsGetter#GetRESTOptions (struct StorageFactoryRestOptionsFactory)
+		// interface genericregistry.RESTOptionsGetter#GetRESTOptions will be called by genericregistry.Store#CompleteWithOptions
+		// Finally all RESTBackend Options will be passed to genericregistry.Store implementations
+		if o.Etcd.ApplyWithStorageFactoryTo(serverstorage.NewDefaultStorageFactory(
+			o.Etcd.StorageConfig,
+			o.Etcd.DefaultStorageMediaType,
+			myapiserver.Codecs,
+			serverstorage.NewDefaultResourceEncodingConfig(myapiserver.Scheme),
+			apiservercfg.MergedResourceConfig,
+			nil), &apiservercfg.Config); err != nil {
+			return nil, err
+		}
+		klog.Infof("etcd cfg: %v", o.Etcd)
+		o.Etcd.StorageConfig.Paging = utilfeature.DefaultFeatureGate.Enabled(features.APIListChunking)
+		// apiservercfg.ClientConfig, err = o.restConfig()
+		// if err != nil {
+		// 	return nil, err
+		// }
+	}
+
 	return &myapiserver.Config{
 		GenericConfig: apiservercfg,
-		ExtraConfig:   myapiserver.ExtraConfig{},
+		ExtraConfig: myapiserver.ExtraConfig{
+			EnableEtcdStorage: o.EnableEtcdStorage,
+		},
 	}, nil
 }
 
@@ -115,7 +153,17 @@ func (o Options) restConfig() (*rest.Config, error) {
 func NewHelloServerCommand(stopCh <-chan struct{}) *cobra.Command {
 	opts := &Options{
 		SecureServing: genericoptions.NewSecureServingOptions().WithLoopback(),
+		// if just encode as json and store to etcd, just do this
+		// Etcd: genericoptions.NewEtcdOptions(storagebackend.NewDefaultConfig(defaultEtcdPathPrefix, myapiserver.Codecs.LegacyCodec(hellov1.SchemeGroupVersion))),
+		// but if we want to encode as json and pb, just assign nil to Codec here
+		// like the official kube-apiserver https://github.com/kubernetes/kubernetes/blob/e1ad9bee5bba8fbe85a6bf6201379ce8b1a611b1/cmd/kube-apiserver/app/options/options.go#L96
+		// when new/complete apiserver config, use EtcdOptions#ApplyWithStorageFactoryTo server.Config, which
+		// finally init server.Config.RESTOptionsGetter as StorageFactoryRestOptionsFactory
+		Etcd: genericoptions.NewEtcdOptions(storagebackend.NewDefaultConfig(defaultEtcdPathPrefix, nil)),
 	}
+	opts.Etcd.StorageConfig.EncodeVersioner = runtime.NewMultiGroupVersioner(hellov1.SchemeGroupVersion, schema.GroupKind{Group: hellov1.GroupName})
+	// opts.Etcd.DefaultStorageMediaType = "application/vnd.kubernetes.protobuf"
+	opts.Etcd.DefaultStorageMediaType = "application/json"
 	opts.SecureServing.BindPort = 6443
 
 	cmd := &cobra.Command{

@@ -26,7 +26,7 @@ import (
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	clientrest "k8s.io/client-go/rest"
 
-	"github.com/phosae/x-kubernetes/api-aggregation-lib/pkg/registry"
+	fooregistry "github.com/phosae/x-kubernetes/api-aggregation-lib/pkg/registry/hello.zeng.dev/foo"
 	hello "github.com/phosae/x-kubernetes/api/hello.zeng.dev"
 	hellov1 "github.com/phosae/x-kubernetes/api/hello.zeng.dev/v1"
 )
@@ -58,7 +58,8 @@ func init() {
 
 // ExtraConfig holds custom apiserver config
 type ExtraConfig struct {
-	Rest *clientrest.Config
+	Rest              *clientrest.Config
+	EnableEtcdStorage bool
 }
 
 // Config defines the config for the apiserver
@@ -110,8 +111,15 @@ func (c completedConfig) New() (*HelloApiServer, error) {
 
 	apiGroupInfo := genericapiserver.NewDefaultAPIGroupInfo(hellov1.GroupName, Scheme, metav1.ParameterCodec, Codecs)
 
-	apiGroupInfo.VersionedResourcesStorageMap["v1"] = map[string]rest.Storage{
-		"foos": registry.NewFooApi(),
+	apiGroupInfo.VersionedResourcesStorageMap["v1"] = map[string]rest.Storage{}
+	if c.ExtraConfig.EnableEtcdStorage {
+		etcdstorage, err := fooregistry.NewREST(Scheme, c.GenericConfig.RESTOptionsGetter)
+		if err != nil {
+			return nil, err
+		}
+		apiGroupInfo.VersionedResourcesStorageMap["v1"]["foos"] = etcdstorage
+	} else {
+		apiGroupInfo.VersionedResourcesStorageMap["v1"]["foos"] = fooregistry.NewMemStore()
 	}
 
 	if err := s.GenericAPIServer.InstallAPIGroup(&apiGroupInfo); err != nil {
