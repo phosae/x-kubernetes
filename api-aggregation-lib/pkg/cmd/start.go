@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	openapinamer "k8s.io/apiserver/pkg/endpoints/openapi"
 	"k8s.io/apiserver/pkg/features"
 	genericapiserver "k8s.io/apiserver/pkg/server"
@@ -54,7 +55,13 @@ func (o *Options) Flags() (fs cliflag.NamedFlagSets) {
 func (o *Options) Complete() error { return nil }
 
 // Validate validates ServerOptions
-func (o Options) Validate(args []string) error { return nil }
+func (o Options) Validate(args []string) error {
+	var errs []error
+	if o.EnableEtcdStorage {
+		errs = o.Etcd.Validate()
+	}
+	return utilerrors.NewAggregate(errs)
+}
 
 type ServerConfig struct {
 	Apiserver *genericapiserver.Config
