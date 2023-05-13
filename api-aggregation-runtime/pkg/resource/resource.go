@@ -1,45 +1,28 @@
-package v1
+package resource
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/apiserver-runtime/pkg/builder/resource"
+
+	v1 "github.com/phosae/x-kubernetes/api/hello.zeng.dev/v1"
 )
 
 var _ resource.Object = &Foo{}
 var _ resource.ObjectList = &FooList{}
 
-// +genclient:namespaced
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-// Foo is a demo type integrated into apiserver runtime framework.
 type Foo struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	Spec FooSpec `json:"spec"`
+	v1.Foo
 }
 
-type FooSpec struct {
-	// Msg persist things like `hello world`
-	Msg string `json:"msg"`
-}
-
-// +genclient:namespaced
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-// FooList is a list of Foo objects.
 type FooList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-
-	Items []Foo `json:"items"`
+	v1.FooList
 }
 
 // GetGroupVersionResource implements resource.Object
 func (Foo) GetGroupVersionResource() schema.GroupVersionResource {
-	return SchemeGroupVersion.WithResource("foos")
+	return v1.SchemeGroupVersion.WithResource("foos")
 }
 
 // GetObjectMeta implements resource.Object
@@ -53,20 +36,20 @@ func (Foo) IsStorageVersion() bool {
 	return true
 }
 
-// NamespaceScoped returns false to indicate Fischer is NOT a namespaced resource.
+// NamespaceScoped returns true to indicate Foo is a namespaced resource.
 // NamespaceScoped implements resource.Object.
 func (Foo) NamespaceScoped() bool {
-	return false
+	return true
 }
 
 // New implements resource.Object
 func (Foo) New() runtime.Object {
-	return &Foo{}
+	return &v1.Foo{}
 }
 
 // NewList implements resource.Object
 func (Foo) NewList() runtime.Object {
-	return &FooList{}
+	return &v1.FooList{}
 }
 
 // GetListMeta implements resource.Object
