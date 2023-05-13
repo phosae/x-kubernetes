@@ -3,8 +3,9 @@ set -eux
 
 PROJECT_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 
-# controller-gen crd:crdVersions=v1 paths=./... output:dir=./artifacts/crd
 # controller-gen schemapatch:manifests=./artifacts/crd paths=./... output:dir=./artifacts/crd
+# controller-gen crd:crdVersions=v1 paths=./... output:dir=./artifacts/crd
+## control OpenAPI description length by maxDescLen, crd:crdVersions=v1,maxDescLen=0 disable field description 
 docker run -it --rm -u root \
     -v ${PROJECT_ROOT}/..:/src\
     -e GOPROXY="https://goproxy.cn"\

@@ -1,0 +1,40 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.12.0
+  name: foos.hello.zeng.dev
+spec:
+  group: hello.zeng.dev
+  names:
+    kind: Foo
+    listKind: FooList
+    plural: foos
+    singular: foo
+  scope: Namespaced
+  versions:
+  - name: v1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              msg:
+                type: string
+              msg1:
+                type: string
+            required:
+            - msg
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
