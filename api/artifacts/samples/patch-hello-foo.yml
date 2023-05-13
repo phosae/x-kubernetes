@@ -1,2 +1,5 @@
-spec: # kubectl patch foo/test --patch-file patch-sample.yml
+# kubectl patch foo/test --patch-file patch-sample.yml 
+# ATTENTION ⚠️: Custom Resource don't support patchStrategy application/strategic-merge-patch+json
+# see https://github.com/kubernetes/kubernetes/pull/53558/files)
+spec:
   msg1: hey, there, 👋
