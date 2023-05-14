@@ -1,0 +1,18 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+- ../api/artifacts/apiserver/rbac.yaml
+- ../api/artifacts/apiserver/apiservice.yaml
+- ../api/artifacts/apiserver/app.yaml
+
+patches:
+- target:
+    kind: Deployment
+    name: apiserver
+  patch: |-
+    - op: replace
+      path: /spec/template/spec/containers/0/image
+      value: ko://github.com/phosae/x-kubernetes/api-aggregation-lib
+    - op: replace
+      path: /spec/template/spec/containers/0/args
+      value: ["--enable-etcd-storage","--etcd-servers=http://localhost:2379"]

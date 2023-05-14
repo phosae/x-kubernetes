@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hello
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: apiserver
+  namespace: hello
+spec:
+  ports:
+  - port: 443
+    protocol: TCP
+    targetPort: 6443
+  selector:
+    apiserver: "true"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: apiserver
+  namespace: hello
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: apiserver
+    apiserver: "true"
+  name: apiserver
+  namespace: hello
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: apiserver
+      apiserver: "true"
+  template:
+    metadata:
+      labels:
+        app: apiserver
+        apiserver: "true"
+    spec:
+      serviceAccountName: apiserver
+      containers:
+      - image: zengxu/sample-apiserver
+        args: ["--etcd-servers=http://localhost:2379"]
+        name: apiserver
+      - name: etcd
+        env: [{"name": "ALLOW_NONE_AUTHENTICATION", "value": "yes"}]
+        image: bitnami/etcd:3.5.9
