@@ -17,7 +17,7 @@ func NewREST(scheme *runtime.Scheme, optsGetter generic.RESTOptionsGetter) (*gen
 		NewListFunc:               func() runtime.Object { return &hellov1.FooList{} },
 		PredicateFunc:             MatchFoo,
 		DefaultQualifiedResource:  hellov1.Resource("foos"),
-		SingularQualifiedResource: hellov1.Resource("foos"),
+		SingularQualifiedResource: hellov1.Resource("foo"),
 
 		CreateStrategy: strategy,
 		UpdateStrategy: strategy,

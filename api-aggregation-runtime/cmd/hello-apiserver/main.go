@@ -23,8 +23,8 @@ func main() {
 		// WithResourceAndHandler(&resource.Foo{}, func(s *runtime.Scheme, g generic.RESTOptionsGetter) (rest.Storage, error) {}).
 		WithResourceAndStorage(&resource.Foo{}, func(scheme *runtime.Scheme, store *genericregistry.Store, opts *generic.StoreOptions) {
 			// currently apiserver-runtime's latest update only supports k8s.io/apisver v0.26.0
-			// SingularQualifiedResource added at v0.27.0, set it manually
-			store.SingularQualifiedResource = (resource.Foo{}).GetGroupVersionResource().GroupResource()
+			// set it SingularQualifiedResource manually, which was added at v0.27.0
+			store.SingularQualifiedResource = (resource.Foo{}).GetSingularQualifiedResource()
 		}).
 		Execute()
 	if err != nil {

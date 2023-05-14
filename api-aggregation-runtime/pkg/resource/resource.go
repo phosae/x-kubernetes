@@ -20,6 +20,10 @@ type FooList struct {
 	v1.FooList
 }
 
+func (Foo) GetSingularQualifiedResource() schema.GroupResource {
+	return v1.SchemeGroupVersion.WithResource("foo").GroupResource()
+}
+
 // GetGroupVersionResource implements resource.Object
 func (Foo) GetGroupVersionResource() schema.GroupVersionResource {
 	return v1.SchemeGroupVersion.WithResource("foos")
