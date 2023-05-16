@@ -5,7 +5,7 @@ resources:
 - ../api/artifacts/apiserver/apiservice.yaml
 - ../api/artifacts/apiserver/app.yaml
 - ./rbac-flowcontrol.yaml
-
+      
 patches:
 - target:
     kind: Deployment
@@ -21,3 +21,10 @@ patches:
     - op: replace
       path: /spec/ports/0/targetPort
       value: 443
+- target:
+    kind: Deployment
+    name: apiserver
+  patch: |-
+    - op: replace
+      path: /spec/template/spec/containers/0/args
+      value: ["--etcd-servers=http://localhost:2379", "--feature-gates", "ContextualLogging=true", "--authentication-token-webhook-cache-ttl=1s", "--authorization-webhook-cache-authorized-ttl=100ms", "--authorization-webhook-cache-unauthorized-ttl=100ms", "-v", "8"]
