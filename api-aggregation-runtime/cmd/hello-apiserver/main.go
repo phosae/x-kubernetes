@@ -39,6 +39,7 @@ func main() {
 			// currently apiserver-runtime's latest update only supports k8s.io/apisver v0.26.0
 			// set it SingularQualifiedResource manually, which was added at v0.27.0
 			store.SingularQualifiedResource = (resource.Foo{}).GetSingularQualifiedResource()
+			store.TableConvertor = (resource.Foo{})
 			// replace "sigs.k8s.io/apiserver-runtime/pkg/builder/rest".GetAttrs
 			// because v1.Foo doesn't implements apiserver-runtime's resource.Object 😓
 			opts.AttrFunc = func(obj runtime.Object) (labels.Set, fields.Set, error) {
