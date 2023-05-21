@@ -1,11 +1,9 @@
 localenv: kind kubectl ko kustomize
 	./hack/setup-kind-with-registry.sh
 
-# ATTENTION ⚠️: KinD support for Kubernetes v1.27.1 will be stable at v0.19.0
-# todo update to v0.19.0 when it's ready
 kind: # find or download kind if necessary
 ifeq (, $(shell which kind))
-	GOBIN=/usr/local/bin/ go install sigs.k8s.io/kind@v0.18.0
+	GOBIN=/usr/local/bin/ go install sigs.k8s.io/kind@v0.19.0
 endif
 
 kubectl: # find or download kubectl if necessary
