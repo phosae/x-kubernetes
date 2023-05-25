@@ -1,6 +1,8 @@
 #!/bin/sh
 set -o errexit
 
+IMAGE=${IMAGE:-kindest/node:v1.27.1}
+
 # create registry container unless it already exists
 reg_name='kind-registry'
 reg_port='5000'
@@ -21,9 +23,9 @@ containerdConfigPatches:
     endpoint = ["http://${reg_name}:5000"]
 nodes:
   - role: control-plane
-    image: kindest/node:v1.27.1
+    image: $IMAGE
   - role: worker
-    image: kindest/node:v1.27.1
+    image: $IMAGE
 networking:
   podSubnet: "10.244.0.0/16"
   serviceSubnet: "10.96.0.0/12"
