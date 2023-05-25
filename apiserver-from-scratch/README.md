@@ -35,10 +35,10 @@ test    0s     testmsg        hey, there, 👋
 If serve on HTTPS, play with `kubectl -s https://localhost:6443 --certificate-authority /path/to/ca`
 
 ## aggregate with kube-apiserver
-use `make deploy-api-aggregation-simple` in parent directory
+use `make deploy-apiserver-from-scratch` in parent directory
 ```bash
 cd ..
-make deploy-api-aggregation-simple
+make deploy-apiserver-from-scratch
 ```
 ## OpenAPI v2 json
 

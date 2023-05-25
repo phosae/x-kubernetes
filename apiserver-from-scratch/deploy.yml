@@ -23,8 +23,8 @@ spec:
         app: api-scratch
     spec:
       containers:
-        #- image: zengxu/api-aggregation-simple
-        - image: ko://github.com/phosae/x-kubernetes/api-aggregation-simple
+        #- image: zengxu/apiserver-from-scratch
+        - image: ko://github.com/phosae/x-kubernetes/apiserver-from-scratch
           imagePullPolicy: Always
           name: apiserver
           env:

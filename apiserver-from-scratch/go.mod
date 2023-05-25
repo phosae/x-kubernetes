@@ -1,4 +1,4 @@
-module github.com/phosae/x-kubernetes/api-aggregation-simple
+module github.com/phosae/x-kubernetes/apiserver-from-scratch
 
 go 1.20
 
