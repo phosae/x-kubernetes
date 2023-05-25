@@ -37,10 +37,10 @@ const (
 func main() {
 	mux := http.NewServeMux()
 	mux.Handle("/", logHandler(http.NotFoundHandler()))
-	mux.HandleFunc("/apis", APIs)
-	mux.HandleFunc("/apis/hello.zeng.dev", APIGroupHelloV1)
-	mux.HandleFunc("/apis/hello.zeng.dev/v1", APIGroupHelloV1Resources)
-	mux.HandleFunc("/openapi/v2", OpenapiV2)
+	mux.Handle("/apis", logHandler(http.HandlerFunc(APIs)))
+	mux.Handle("/apis/hello.zeng.dev", logHandler(http.HandlerFunc(APIGroupHelloV1)))
+	mux.Handle("/apis/hello.zeng.dev/v1", logHandler(http.HandlerFunc(APIGroupHelloV1Resources)))
+	mux.Handle("/openapi/v2", logHandler(http.HandlerFunc(OpenapiV2)))
 
 	// LIST /apis/hello.zeng.dev/v1/foos
 	// LIST /apis/hello.zeng.dev/v1/namespaces/{namespace}/foos
@@ -84,6 +84,47 @@ var apis = metav1.APIGroupList{
 	},
 }
 
+var apidiscoveries = `{
+	"apiVersion": "apidiscovery.k8s.io/v2beta1",
+	"kind": "APIGroupDiscoveryList",
+	"metadata": {},
+	"items": [
+	  {
+		"metadata": {
+		  "name": "hello.zeng.dev"
+		},
+		"versions": [
+		  {
+			"version": "v1",
+			"resources": [
+			  {
+				"resource": "foos",
+				"responseKind": {
+				  "group": "hello.zeng.dev",
+				  "kind": "Foo",
+				  "version": "v1"
+				},
+				"scope": "Namespaced",
+				"shortNames": [
+				  "fo"
+				],
+				"singularResource": "foo",
+				"verbs": [
+				  "delete",
+				  "get",
+				  "list",
+				  "patch",
+				  "create",
+				  "update"
+				]
+			  }
+			]
+		  }
+		]
+	  }
+	]
+  }`
+
 // List APIGroups
 //
 //	@Summary		List all APIGroups of this apiserver
@@ -92,8 +133,31 @@ var apis = metav1.APIGroupList{
 //	@Success		200	{object} metav1.APIGroupList
 //	@Router			/apis [get]
 func APIs(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	renderJSON(w, apis)
+	var gvk [3]string
+	// 1.27+ kubectl discovery APIGroups and APIResourceList only by /apis with Header
+	//   Accept: application/json;g=apidiscovery.k8s.io;v=v2beta1;as=APIGroupDiscoveryList
+	// 1.27- kubectl discovery APIGroups and APIResourceList by /apis, /apis/{group}, /apis/{group}/{version}
+	for _, acceptPart := range strings.Split(r.Header.Get("Accept"), ";") {
+		if g_v_k := strings.Split(acceptPart, "="); len(g_v_k) == 2 {
+			switch g_v_k[0] {
+			case "g":
+				gvk[0] = g_v_k[1]
+			case "v":
+				gvk[1] = g_v_k[1]
+			case "as":
+				gvk[2] = g_v_k[1]
+			}
+		}
+	}
+
+	if gvk[0] == "apidiscovery.k8s.io" && gvk[2] == "APIGroupDiscoveryList" {
+		fmt.Println("返回了 APIGroupDiscoveryList 总该 OK？？？")
+		w.Header().Set("Content-Type", "application/json;g=apidiscovery.k8s.io;v=v2beta1;as=APIGroupDiscoveryList")
+		w.Write([]byte(apidiscoveries))
+	} else {
+		w.Header().Set("Content-Type", "application/json")
+		renderJSON(w, apis)
+	}
 }
 
 // Get APIGroupHelloV1
@@ -123,10 +187,11 @@ const hellov1Resources = `{
 		  "delete",
 		  "get",
 		  "list",
-		  "update"
+		  "update",
+		  "patch"
 		],
 		"shortNames": [
-		  "foo"
+		  "fo"
 		],
 		"categories": [
 		  "all"
