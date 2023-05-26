@@ -9,6 +9,7 @@ spec:
     listKind: FooList
     plural: foos
     singular: foo
+    shortNames: ["fo"]
   scope: Namespaced
   versions:
     - name: v1

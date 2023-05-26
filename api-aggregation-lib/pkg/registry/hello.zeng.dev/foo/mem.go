@@ -39,6 +39,7 @@ func NewMemStore() *fooApi {
 	}
 }
 
+var _ rest.ShortNamesProvider = &fooApi{}
 var _ rest.SingularNameProvider = &fooApi{}
 var _ rest.Getter = &fooApi{}
 var _ rest.Lister = &fooApi{}
@@ -47,6 +48,10 @@ var _ rest.GracefulDeleter = &fooApi{}
 var _ rest.CollectionDeleter = &fooApi{}
 
 // var _ rest.StandardStorage = &fooApi{} // implements all interfaces of rest.StandardStorage except rest.Watcher
+
+func (*fooApi) ShortNames() []string {
+	return []string{"fo"}
+}
 
 // GetSingularName implements rest.SingularNameProvider
 func (*fooApi) GetSingularName() string {
