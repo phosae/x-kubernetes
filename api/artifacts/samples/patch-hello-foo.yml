@@ -2,4 +2,5 @@
 # ATTENTION ⚠️: Custom Resource don't support patchStrategy application/strategic-merge-patch+json
 # see https://github.com/kubernetes/kubernetes/pull/53558/files)
 spec:
-  msg1: hey, there, 👋
+  msg: 'hey there'
+  msg1: '👋 hello world from application/strategic-merge-patch+json 👋'

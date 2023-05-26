@@ -25,6 +25,7 @@ spec:
         - name: message1
           jsonPath: .spec.msg1
           type: string
+          priority: 1 # kubectl get fo -o wide
       schema:
         openAPIV3Schema:
           type: object

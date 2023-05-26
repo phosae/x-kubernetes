@@ -273,7 +273,7 @@ type Foo struct {
 	Spec struct {
 		// Msg says hello world!
 		Msg string `json:"msg"`
-		// Msg1 provides some verbose information
+		// Msg1 provides verbose information
 		Msg1 string `json:"msg1"`
 	} `json:"spec"`
 }
@@ -301,7 +301,8 @@ func init() {
 			Msg  string "json:\"msg\""
 			Msg1 string "json:\"msg1\""
 		}{
-			Msg: "hello world",
+			Msg:  "hello world",
+			Msg1: "apiserver-from-scratch says '👋 hello world 👋'",
 		},
 	}
 }
@@ -387,7 +388,7 @@ var fooCol = []metav1.TableColumnDefinition{
 	{Name: "Name", Type: "string", Format: "name", Description: metav1.ObjectMeta{}.SwaggerDoc()["name"]},
 	{Name: "Age", Type: "string", Description: metav1.ObjectMeta{}.SwaggerDoc()["creationTimestamp"]},
 	{Name: "Message", Type: "string", Format: "message", Description: "foo message"},
-	{Name: "Message1", Type: "string", Format: "message1", Description: "foo message plus"},
+	{Name: "Message1", Type: "string", Format: "message1", Description: "foo message plus", Priority: 1}, // kubectl -o wide
 }
 
 func foo2TableRow(f *Foo) []metav1.TableRow {
