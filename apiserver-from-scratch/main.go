@@ -151,7 +151,6 @@ func APIs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if gvk[0] == "apidiscovery.k8s.io" && gvk[2] == "APIGroupDiscoveryList" {
-		fmt.Println("返回了 APIGroupDiscoveryList 总该 OK？？？")
 		w.Header().Set("Content-Type", "application/json;g=apidiscovery.k8s.io;v=v2beta1;as=APIGroupDiscoveryList")
 		w.Write([]byte(apidiscoveries))
 	} else {
@@ -637,13 +636,11 @@ func PatchFoo(w http.ResponseWriter, r *http.Request, name string) {
 			writeErrStatus(w, nsname, http.StatusBadRequest, err.Error())
 			return
 		}
-		fmt.Println("orig map", originalObjMap)
 		if patchedObjMap, err := kstrategicpatch.StrategicMergeMapPatch(originalObjMap, patchMap, schema); err != nil {
 			writeErrStatus(w, nsname, http.StatusBadRequest, err.Error())
 			return
 		} else {
 			var theFoo Foo
-			fmt.Println("patched map", patchedObjMap)
 			if err = kruntime.DefaultUnstructuredConverter.FromUnstructuredWithValidation(patchedObjMap, &theFoo, false); err != nil {
 				writeErrStatus(w, nsname, http.StatusBadRequest, err.Error())
 				return
