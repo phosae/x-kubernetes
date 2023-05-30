@@ -360,14 +360,14 @@ func renderJSON(w http.ResponseWriter, v interface{}) {
 }
 
 const kstatusTmplate = `{
-	"kind":"Status",
-	"apiVersion":"v1",
-	"metadata":{},
-	"status":"Failure",
-	"message":"%s",
-	"reason":"%s",
-	"details":{"name":"%s","kind":"foos"},
-	"code":%d
+	"apiVersion": "v1",
+	"kind": "Status",
+	"metadata": {},
+	"status": "Failure",
+	"message": "%s",
+	"reason": "%s",
+	"details": {"group": "hello.zeng.dev", "kind": "foos", "name": "%s"},
+	"code": %d
 }`
 
 func writeErrStatus(w http.ResponseWriter, name string, status int, msg string) {
