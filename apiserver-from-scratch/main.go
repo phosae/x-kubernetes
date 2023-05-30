@@ -600,19 +600,15 @@ func PatchFoo(w http.ResponseWriter, r *http.Request, name string) {
 	x.Lock()
 	defer x.Unlock()
 
-	var originalObjMap map[string]interface{}
-	var originalBytes []byte
-	var schema Foo
-	if old, ok := foos[nsname]; !ok { // not exists
+	var old, ok = foos[nsname]
+	if !ok { // not exists
 		w.WriteHeader(http.StatusNotFound)
 		return
-	} else {
-		schema = old
-		originalBytes, _ = json.Marshal(old)
-		originalObjMap, _ = kruntime.DefaultUnstructuredConverter.ToUnstructured(&old)
 	}
 
+	var originalBytes, _ = json.Marshal(old)
 	var patchedFoo []byte
+
 	switch r.Header.Get("Content-Type") {
 	case "application/merge-patch+json":
 		patchedFoo, err = jsonpatch.MergePatch(originalBytes, patchBytes)
@@ -632,17 +628,21 @@ func PatchFoo(w http.ResponseWriter, r *http.Request, name string) {
 			return
 		}
 	case "application/strategic-merge-patch+json":
+		var schema Foo = old
+		var originalMap, _ = kruntime.DefaultUnstructuredConverter.ToUnstructured(&old)
 		var patchMap map[string]interface{}
+
 		if err = json.Unmarshal(patchBytes, &patchMap); err != nil {
 			writeErrStatus(w, nsname, http.StatusBadRequest, err.Error())
 			return
 		}
-		if patchedObjMap, err := kstrategicpatch.StrategicMergeMapPatch(originalObjMap, patchMap, schema); err != nil {
+
+		if patchedMap, err := kstrategicpatch.StrategicMergeMapPatch(originalMap, patchMap, schema); err != nil {
 			writeErrStatus(w, nsname, http.StatusBadRequest, err.Error())
 			return
 		} else {
 			var theFoo Foo
-			if err = kruntime.DefaultUnstructuredConverter.FromUnstructuredWithValidation(patchedObjMap, &theFoo, false); err != nil {
+			if err = kruntime.DefaultUnstructuredConverter.FromUnstructuredWithValidation(patchedMap, &theFoo, false); err != nil {
 				writeErrStatus(w, nsname, http.StatusBadRequest, err.Error())
 				return
 			} else {
