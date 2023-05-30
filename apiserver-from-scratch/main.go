@@ -17,7 +17,7 @@ import (
 	"time"
 
 	jsonpatch "github.com/evanphx/json-patch"
-	openapi_v2 "github.com/google/gnostic/openapiv2"
+	gnosticopenapiv2 "github.com/google/gnostic/openapiv2"
 	"google.golang.org/protobuf/proto"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kruntime "k8s.io/apimachinery/pkg/runtime"
@@ -214,12 +214,13 @@ func APIGroupHelloV1Resources(w http.ResponseWriter, _ *http.Request) {
 //go:embed docs/*
 var embedFS embed.FS
 
-// Get APIResourceList
+// Get OpenAPI Spec v2 doc
 //
-//	@Summary		Get APIResourceList for group version 'hello.zeng.dev/v1'
-//	@Description	List APIResource Info about group version 'hello.zeng.dev/v1'
+//	@Summary		Get OpenAPI Spec v2 doc of this server
+//	@Description	Get OpenAPI Spec v2 doc of this server
 //	@Produce		json
-//	@Success		200	{string} apis
+//	@Produce		application/com.github.proto-openapi.spec.v2@v1.0+protobuf
+//	@Success		200	{string} swagger.json
 //	@Router			/openapi/v2 [get]
 func OpenapiV2(w http.ResponseWriter, r *http.Request) {
 	jsonbytes, _ := embedFS.ReadFile("docs/swagger.json")
@@ -244,7 +245,7 @@ func OpenapiV2(w http.ResponseWriter, r *http.Request) {
 }
 
 func ToProtoBinary(json []byte) ([]byte, error) {
-	document, err := openapi_v2.ParseDocument(json)
+	document, err := gnosticopenapiv2.ParseDocument(json)
 	if err != nil {
 		return nil, err
 	}
@@ -440,8 +441,8 @@ func tryConvert2Table(obj interface{}, acceptedContentType string) interface{} {
 }
 
 // GetFoo swag doc
-// @Summary      Get an Foo Object
-// @Description  Get an Foo by Resource Name
+// @Summary      Get one Foo Object
+// @Description  Get one Foo by Resource Name
 // @Tags         foos
 // @Produce      json
 // @Param        namespace	path	string  true  "Namepsace"
