@@ -49,7 +49,12 @@ func main() {
 
 func BuildMux() *http.ServeMux {
 	mux := http.NewServeMux()
-	mux.Handle("/", logHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
+	mux.Handle("/", logHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "" && r.URL.Path != "/" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+	})))
 	mux.Handle("/apis", logHandler(http.HandlerFunc(APIs)))
 	mux.Handle("/apis/hello.zeng.dev", logHandler(http.HandlerFunc(APIGroupHelloV1)))
 	mux.Handle("/apis/hello.zeng.dev/v1", logHandler(http.HandlerFunc(APIGroupHelloV1Resources)))
