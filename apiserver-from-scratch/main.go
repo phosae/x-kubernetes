@@ -35,6 +35,19 @@ const (
 // @description     K8s apiserver style http server from scratch
 // @BasePath  /apis
 func main() {
+	mux := BuildMux()
+	if certDir := os.Getenv("CERT_DIR"); certDir != "" {
+		certFile := filepath.Join(certDir, tlsCertName)
+		keyFile := filepath.Join(certDir, tlsKeyName)
+		log.Println("serving https on 0.0.0.0:6443")
+		log.Fatal(http.ListenAndServeTLS(":6443", certFile, keyFile, mux))
+	} else {
+		log.Println("serving http on 0.0.0.0:8000")
+		log.Fatal(http.ListenAndServe(":8000", mux))
+	}
+}
+
+func BuildMux() *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.Handle("/", logHandler(http.NotFoundHandler()))
 	mux.Handle("/apis", logHandler(http.HandlerFunc(APIs)))
@@ -49,16 +62,7 @@ func main() {
 	// PUT  /apis/hello.zeng.dev/v1/namespaces/{namespace}/foos/{name}
 	// DEL  /apis/hello.zeng.dev/v1/namespaces/{namespace}/foos/{name}
 	mux.Handle("/apis/hello.zeng.dev/v1/", logHandler(ContentTypeJSONHandler(http.HandlerFunc(fooHandler)))) // ends with '/' for prefix matching...
-
-	if certDir := os.Getenv("CERT_DIR"); certDir != "" {
-		certFile := filepath.Join(certDir, tlsCertName)
-		keyFile := filepath.Join(certDir, tlsKeyName)
-		log.Println("serving https on 0.0.0.0:6443")
-		log.Fatal(http.ListenAndServeTLS(":6443", certFile, keyFile, mux))
-	} else {
-		log.Println("serving http on 0.0.0.0:8000")
-		log.Fatal(http.ListenAndServe(":8000", mux))
-	}
+	return mux
 }
 
 var apis = metav1.APIGroupList{
