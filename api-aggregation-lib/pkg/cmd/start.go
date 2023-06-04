@@ -37,6 +37,10 @@ type Options struct {
 
 	EnableEtcdStorage bool
 	Etcd              *genericoptions.EtcdOptions
+
+	EnableAuth     bool
+	Authentication *genericoptions.DelegatingAuthenticationOptions
+	Authorization  *genericoptions.DelegatingAuthorizationOptions
 }
 
 func (o *Options) Flags() (fs cliflag.NamedFlagSets) {
@@ -48,6 +52,10 @@ func (o *Options) Flags() (fs cliflag.NamedFlagSets) {
 
 	msfs.BoolVar(&o.EnableEtcdStorage, "enable-etcd-storage", false, "If true, store objects in etcd")
 	o.Etcd.AddFlags(fs.FlagSet("Etcd"))
+
+	msfs.BoolVar(&o.EnableAuth, "enable-auth", o.EnableAuth, "If true, enable authn and authz")
+	o.Authentication.AddFlags(fs.FlagSet("apiserver authentication"))
+	o.Authorization.AddFlags(fs.FlagSet("apiserver authorization"))
 	return fs
 }
 
@@ -59,6 +67,10 @@ func (o Options) Validate(args []string) error {
 	var errs []error
 	if o.EnableEtcdStorage {
 		errs = o.Etcd.Validate()
+	}
+	if o.EnableAuth {
+		errs = append(errs, o.Authentication.Validate()...)
+		errs = append(errs, o.Authorization.Validate()...)
 	}
 	return utilerrors.NewAggregate(errs)
 }
@@ -133,6 +145,15 @@ func (o Options) ApiserverConfig() (*genericapiserver.RecommendedConfig, error) 
 		serverConfig.OpenAPIV3Config.Info.Version = "0.1"
 	}
 
+	if o.EnableAuth {
+		if err := o.Authentication.ApplyTo(&serverConfig.Authentication, serverConfig.SecureServing, nil); err != nil {
+			return nil, err
+		}
+		if err := o.Authorization.ApplyTo(&serverConfig.Authorization); err != nil {
+			return nil, err
+		}
+	}
+
 	return serverConfig, nil
 }
 
@@ -166,7 +187,9 @@ func NewHelloServerCommand(stopCh <-chan struct{}) *cobra.Command {
 		// like the official kube-apiserver https://github.com/kubernetes/kubernetes/blob/e1ad9bee5bba8fbe85a6bf6201379ce8b1a611b1/cmd/kube-apiserver/app/options/options.go#L96
 		// when new/complete apiserver config, use EtcdOptions#ApplyWithStorageFactoryTo server.Config, which
 		// finally init server.Config.RESTOptionsGetter as StorageFactoryRestOptionsFactory
-		Etcd: genericoptions.NewEtcdOptions(storagebackend.NewDefaultConfig(defaultEtcdPathPrefix, nil)),
+		Etcd:           genericoptions.NewEtcdOptions(storagebackend.NewDefaultConfig(defaultEtcdPathPrefix, nil)),
+		Authentication: genericoptions.NewDelegatingAuthenticationOptions(),
+		Authorization:  genericoptions.NewDelegatingAuthorizationOptions(),
 	}
 	opts.Etcd.StorageConfig.EncodeVersioner = runtime.NewMultiGroupVersioner(hellov1.SchemeGroupVersion, schema.GroupKind{Group: hellov1.GroupName})
 	// opts.Etcd.DefaultStorageMediaType = "application/vnd.kubernetes.protobuf"
