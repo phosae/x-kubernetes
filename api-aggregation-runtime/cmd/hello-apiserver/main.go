@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 
+	"github.com/spf13/pflag"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
@@ -21,7 +22,7 @@ import (
 
 	"github.com/phosae/x-kubernetes/api-aggregation-runtime/pkg/resource"
 	"github.com/phosae/x-kubernetes/api/generated/openapi"
-	"github.com/spf13/pflag"
+	hellov1 "github.com/phosae/x-kubernetes/api/hello.zeng.dev/v1"
 )
 
 func init() {
@@ -44,6 +45,9 @@ func main() {
 	logOpts := logs.NewOptions()
 
 	err := builder.APIServer.
+		WithAdditionalSchemeInstallers(func(s *runtime.Scheme) error {
+			return hellov1.AddDefaultingFuncs(s)
+		}).
 		WithOpenAPIDefinitions("hello.zeng.dev-server", "v0.1.0", openapi.GetOpenAPIDefinitions).
 		// customize backed storage (can be replace with any implemention instead of etcd
 		// normally use WithResourceAndStorage is ok
