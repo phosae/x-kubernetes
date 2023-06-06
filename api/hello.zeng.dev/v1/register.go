@@ -19,7 +19,7 @@ var (
 )
 
 func init() {
-	localSchemeBuilder.Register(addKnownTypes, RegisterDefaults)
+	localSchemeBuilder.Register(addKnownTypes)
 }
 
 // Adds the list of known types to the given scheme.
