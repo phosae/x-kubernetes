@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
 	"log"
 	"net/http/httptest"
 	"testing"
 
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -91,5 +94,50 @@ func TestDiscovery(t *testing.T) {
 				t.Errorf("KindFor() gotGVR = %v, want %v", gvk, tt.targetGVR)
 			}
 		})
+	}
+}
+
+func TestFooAPI(t *testing.T) {
+	server := httptest.NewServer(BuildMux())
+	defer server.Close()
+	kube := kubernetes.NewForConfigOrDie(&rest.Config{Host: server.URL})
+
+	rest := kube.RESTClient()
+	ret := rest.Verb("GET").Prefix("apis", "hello.zeng.dev", "v1").
+		Namespace("default").Resource("foos").Name("bar").Do(context.Background())
+	if err := ret.Error(); err != nil {
+		t.Fatalf("RESTGetFoo() error = %v", err)
+	}
+
+	if err := ret.Into(&Foo{}); err != nil {
+		t.Fatalf("RESTGetFoo() error = %v", err)
+	}
+
+	var newFoo = Foo{}
+	b, _ := json.Marshal(&Foo{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "newfoo",
+		},
+		Spec: struct {
+			Msg  string "json:\"msg\""
+			Msg1 string "json:\"msg1\""
+		}{
+			Msg:  "hello test",
+			Msg1: "new foo created from test says hi 👋",
+		},
+	})
+	err := rest.Verb("POST").Prefix("apis", "hello.zeng.dev", "v1").
+		Namespace("default").Resource("foos").Body(b).Do(context.Background()).Into(&newFoo)
+	if err != nil {
+		t.Fatalf("RESTCreateFoo() error = %v", err)
+	}
+	if newFoo.Name != "newfoo" || newFoo.Spec.Msg != "hello test" || newFoo.Spec.Msg1 != "new foo created from test says hi 👋" {
+		t.Fatalf("RESTCreateFoo() error = %v, want name=%s msg=%s msg1=%s, actual %v", err, "newfoo", "hello test", "new foo created from test says hi 👋", newFoo)
+	}
+
+	err = rest.Verb("DELETE").Prefix("apis", "hello.zeng.dev", "v1").
+		Namespace("default").Resource("foos").Name("newfoo").Do(context.Background()).Into(&Foo{})
+	if err != nil {
+		t.Fatalf("RESTDeleteFoo error = %v", err)
 	}
 }

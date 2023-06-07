@@ -540,6 +540,10 @@ func PostFoo(w http.ResponseWriter, r *http.Request) {
 	ns := r.Context().Value(ctxkey("namespace"))
 	nsname := fmt.Sprintf("%s/%s", ns, f.Name)
 
+	f.APIVersion = "hello.zeng.dev/v1"
+	f.Kind = "Foo"
+	f.Namespace = ns.(string)
+
 	x.Lock()
 	defer x.Unlock()
 
