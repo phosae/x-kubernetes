@@ -29,6 +29,7 @@ import (
 	fooregistry "github.com/phosae/x-kubernetes/api-aggregation-lib/pkg/registry/hello.zeng.dev/foo"
 	hello "github.com/phosae/x-kubernetes/api/hello.zeng.dev"
 	hellov1 "github.com/phosae/x-kubernetes/api/hello.zeng.dev/v1"
+	hellov1internal "github.com/phosae/x-kubernetes/api-aggregation-lib/pkg/api/hello.zeng.dev/v1"
 )
 
 var (
@@ -41,6 +42,7 @@ var (
 
 func init() {
 	hello.Install(Scheme)
+	hellov1internal.AddDefaultingFuncs(Scheme)
 
 	// we need to add the options to empty v1
 	metav1.AddToGroupVersion(Scheme, schema.GroupVersion{Group: "", Version: "v1"})
