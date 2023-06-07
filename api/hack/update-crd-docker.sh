@@ -13,5 +13,5 @@ docker run -it --rm -u root \
     -e CRD_FLAG="schemapatch:manifests=./api/artifacts/crd"\
     -e CRD_TYPES_PATH="/src/api"\
     -e CRD_OUT_PATH="/src/api/artifacts/crd"\
-    zengxu/kube-code-generator:v1.27.1-pb\
+    zengxu/kube-code-generator:v1.28.0-alpha.1\
     update-crd.sh

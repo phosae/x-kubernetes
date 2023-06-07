@@ -7,6 +7,7 @@ import (
 )
 
 // Install registers the API group and adds types to a scheme
+// DEPRECATED: implementations such as apiserver should install APIs with their own hub type, conversion func, default funcs, etc
 func Install(scheme *runtime.Scheme) {
 	utilruntime.Must(AddToScheme(scheme))
 	utilruntime.Must(v1.AddToScheme(scheme))

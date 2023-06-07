@@ -1,3 +1,4 @@
+// DEPRECATED: implementations such as apiserver should provide their own hub packge
 package hello_zeng_dev
 
 import (

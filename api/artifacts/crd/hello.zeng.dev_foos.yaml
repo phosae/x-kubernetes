@@ -14,7 +14,7 @@ spec:
   versions:
     - name: v1
       served: true
-      storage: true
+      storage: false
       additionalPrinterColumns:
         - name: age
           jsonPath: .metadata.creationTimestamp
@@ -51,3 +51,23 @@ spec:
                 msg1:
                   description: Msg1 provides some verbose information
                   type: string
+    - name: v2
+      served: true
+      storage: true
+      additionalPrinterColumns:
+        - name: status
+          jsonPath: .status.phase
+          type: string
+        - name: age
+          jsonPath: .metadata.creationTimestamp
+          type: date
+        - name: message
+          jsonPath: .spec.config.msg
+          type: string
+          priority: 1
+        - name: message1
+          jsonPath: .spec.config.msg1
+          type: string
+          priority: 1
+      schema:
+        openAPIV3Schema: {}
