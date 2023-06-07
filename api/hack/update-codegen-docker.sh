@@ -8,6 +8,7 @@ docker run -it --rm -u root \
     -e GOPROXY="https://goproxy.cn"\
     -e PROJECT_PACKAGE=${PROJECT_PACKAGE} \
     -e CLIENT_GENERATOR_OUT=${PROJECT_PACKAGE}/generated \
+    -e OPENAPI_GENERATOR_OUT=${PROJECT_PACKAGE}/generated \
     -e APIS_ROOT=${PROJECT_PACKAGE} \
     -e GENERATION_TARGETS="helpers,client,openapi" \
     -e WITH_APPLYCONFIG="true" \
