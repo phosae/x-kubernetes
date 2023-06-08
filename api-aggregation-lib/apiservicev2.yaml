@@ -1,0 +1,13 @@
+apiVersion: apiregistration.k8s.io/v1
+kind: APIService
+metadata:
+  name: v2.hello.zeng.dev
+spec:
+  service:
+    name: apiserver
+    namespace: hello
+  group: hello.zeng.dev
+  version: v2
+  insecureSkipTLSVerify: true
+  groupPriorityMinimum: 100
+  versionPriority: 10

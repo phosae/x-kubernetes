@@ -13,7 +13,7 @@ import (
 	"k8s.io/apiserver/pkg/storage"
 	"k8s.io/apiserver/pkg/storage/names"
 
-	hellov1 "github.com/phosae/x-kubernetes/api/hello.zeng.dev/v1"
+	hello "github.com/phosae/x-kubernetes/api-aggregation-lib/pkg/api/hello.zeng.dev"
 )
 
 // NewStrategy creates and returns a fooStrategy instance
@@ -23,9 +23,9 @@ func NewStrategy(typer runtime.ObjectTyper) fooStrategy {
 
 // GetAttrs returns labels.Set, fields.Set, and error in case the given runtime.Object is not a Fischer
 func GetAttrs(obj runtime.Object) (labels.Set, fields.Set, error) {
-	apiserver, ok := obj.(*hellov1.Foo)
+	apiserver, ok := obj.(*hello.Foo)
 	if !ok {
-		return nil, nil, fmt.Errorf("given object is not a Fischer")
+		return nil, nil, fmt.Errorf("given object is not a Foo")
 	}
 	return labels.Set(apiserver.ObjectMeta.Labels), SelectableFields(apiserver), nil
 }
@@ -41,7 +41,7 @@ func MatchFoo(label labels.Selector, field fields.Selector) storage.SelectionPre
 }
 
 // SelectableFields returns a field set that represents the object.
-func SelectableFields(obj *hellov1.Foo) fields.Set {
+func SelectableFields(obj *hello.Foo) fields.Set {
 	return generic.ObjectMetaFieldsSet(&obj.ObjectMeta, true)
 }
 
@@ -61,7 +61,7 @@ func (fooStrategy) PrepareForUpdate(ctx context.Context, obj, old runtime.Object
 }
 
 func (fooStrategy) Validate(ctx context.Context, obj runtime.Object) field.ErrorList {
-	_ = obj.(*hellov1.Foo)
+	_ = obj.(*hello.Foo)
 	return nil
 }
 
@@ -93,16 +93,17 @@ func (fooStrategy) ConvertToTable(ctx context.Context, object runtime.Object, ta
 
 	table.ColumnDefinitions = []metav1.TableColumnDefinition{
 		{Name: "Name", Type: "string", Format: "name", Description: metav1.ObjectMeta{}.SwaggerDoc()["name"]},
+		{Name: "Status", Type: "string", Format: "status", Description: "status of where the Foo is in its lifecycle"},
 		{Name: "Age", Type: "string", Description: metav1.ObjectMeta{}.SwaggerDoc()["creationTimestamp"]},
-		{Name: "Message", Type: "string", Format: "message", Description: "foo message"},
+		{Name: "Message", Type: "string", Format: "message", Description: "foo message", Priority: 1},        // kubectl -o wide
 		{Name: "Message1", Type: "string", Format: "message1", Description: "foo message plus", Priority: 1}, // kubectl -o wide
 	}
 
 	switch t := object.(type) {
-	case *hellov1.Foo:
+	case *hello.Foo:
 		table.ResourceVersion = t.ResourceVersion
 		addFoosToTable(&table, *t)
-	case *hellov1.FooList:
+	case *hello.FooList:
 		table.ResourceVersion = t.ResourceVersion
 		table.Continue = t.Continue
 		addFoosToTable(&table, t.Items...)

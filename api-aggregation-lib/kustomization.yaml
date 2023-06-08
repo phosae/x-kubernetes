@@ -3,6 +3,7 @@ kind: Kustomization
 resources:
 - ../api/artifacts/apiserver/rbac.yaml
 - ../api/artifacts/apiserver/apiservice.yaml
+- ./apiservicev2.yaml
 - ../api/artifacts/apiserver/app.yaml
 
 patches:

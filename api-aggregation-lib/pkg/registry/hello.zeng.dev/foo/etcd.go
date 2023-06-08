@@ -6,7 +6,7 @@ import (
 	genericregistry "k8s.io/apiserver/pkg/registry/generic/registry"
 	"k8s.io/apiserver/pkg/registry/rest"
 
-	hellov1 "github.com/phosae/x-kubernetes/api/hello.zeng.dev/v1"
+	hello "github.com/phosae/x-kubernetes/api-aggregation-lib/pkg/api/hello.zeng.dev"
 )
 
 type fooStorage struct {
@@ -24,11 +24,11 @@ func NewREST(scheme *runtime.Scheme, optsGetter generic.RESTOptionsGetter) (*foo
 	strategy := NewStrategy(scheme)
 
 	store := &genericregistry.Store{
-		NewFunc:                   func() runtime.Object { return &hellov1.Foo{} },
-		NewListFunc:               func() runtime.Object { return &hellov1.FooList{} },
+		NewFunc:                   func() runtime.Object { return &hello.Foo{} },
+		NewListFunc:               func() runtime.Object { return &hello.FooList{} },
 		PredicateFunc:             MatchFoo,
-		DefaultQualifiedResource:  hellov1.Resource("foos"),
-		SingularQualifiedResource: hellov1.Resource("foo"),
+		DefaultQualifiedResource:  hello.Resource("foos"),
+		SingularQualifiedResource: hello.Resource("foo"),
 
 		CreateStrategy: strategy,
 		UpdateStrategy: strategy,

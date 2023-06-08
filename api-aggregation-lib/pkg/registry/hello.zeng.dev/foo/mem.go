@@ -16,23 +16,25 @@ import (
 	"k8s.io/apiserver/pkg/registry/rest"
 	"k8s.io/apiserver/pkg/storage/names"
 
-	hellov1 "github.com/phosae/x-kubernetes/api/hello.zeng.dev/v1"
+	hello "github.com/phosae/x-kubernetes/api-aggregation-lib/pkg/api/hello.zeng.dev"
 )
 
 type fooApi struct {
 	sync.RWMutex
-	store map[string]*hellov1.Foo
+	store map[string]*hello.Foo
 }
 
 func NewMemStore() *fooApi {
 	return &fooApi{
-		store: map[string]*hellov1.Foo{
+		store: map[string]*hello.Foo{
 			"default/bar": {
-				// TypeMeta:   metav1.TypeMeta{APIVersion: "hello.zeng.dev/v1", Kind: "Foo"},
 				ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "bar", CreationTimestamp: metav1.Now()},
-				Spec: hellov1.FooSpec{
-					Msg:  "hello world",
-					Msg1: "made in apiserver ontop k8s.io/apiserver library",
+				Spec: hello.FooSpec{
+					Image: "busybox:1.36",
+					Config: hello.FooConfig{
+						Msg:  "hello world 👋",
+						Msg1: "made in apiserver using k8s.io/apiserver 👊",
+					},
 				},
 			},
 		},
@@ -55,7 +57,7 @@ func (*fooApi) ShortNames() []string {
 
 // GetSingularName implements rest.SingularNameProvider
 func (*fooApi) GetSingularName() string {
-	return hellov1.Resource("foo").Resource
+	return hello.Resource("foo").Resource
 }
 
 // Kind implements rest.KindProvider
@@ -70,7 +72,7 @@ func (*fooApi) NamespaceScoped() bool {
 
 // New implements rest.Storage
 func (*fooApi) New() runtime.Object {
-	return &hellov1.Foo{}
+	return &hello.Foo{}
 }
 
 // Destroy implements rest.Storage
@@ -98,7 +100,7 @@ func (f *fooApi) Create(ctx context.Context, obj runtime.Object, createValidatio
 
 	key = fmt.Sprintf("%s/%s", namespace, name)
 	if _, ok := f.store[key]; ok {
-		return nil, errors.NewAlreadyExists(hellov1.Resource("foos"), key)
+		return nil, errors.NewAlreadyExists(hello.Resource("foos"), key)
 	}
 
 	if createValidation != nil {
@@ -107,7 +109,7 @@ func (f *fooApi) Create(ctx context.Context, obj runtime.Object, createValidatio
 		}
 	}
 
-	f.store[key] = obj.(*hellov1.Foo)
+	f.store[key] = obj.(*hello.Foo)
 	return obj, nil
 }
 
@@ -125,7 +127,7 @@ func (f *fooApi) Update(ctx context.Context, name string, objInfo rest.UpdatedOb
 	f.Lock()
 	defer f.Unlock()
 
-	if existingObj = f.store[key]; existingObj.(*hellov1.Foo) == nil {
+	if existingObj = f.store[key]; existingObj.(*hello.Foo) == nil {
 		creating = true
 		creatingObj = f.New()
 		creatingObj, err = objInfo.UpdatedObject(ctx, creatingObj)
@@ -153,7 +155,7 @@ func (f *fooApi) Update(ctx context.Context, name string, objInfo rest.UpdatedOb
 		}
 	}
 
-	f.store[key] = updated.(*hellov1.Foo)
+	f.store[key] = updated.(*hello.Foo)
 
 	return updated, false, nil
 }
@@ -167,7 +169,7 @@ func (f *fooApi) Delete(ctx context.Context, name string, deleteValidation rest.
 	defer f.Unlock()
 
 	if obj, ok := f.store[key]; !ok { // not exists
-		return nil, false, errors.NewNotFound(hellov1.Resource("foos"), key)
+		return nil, false, errors.NewNotFound(hello.Resource("foos"), key)
 	} else {
 		if deleteValidation != nil {
 			if err := deleteValidation(ctx, obj); err != nil {
@@ -183,7 +185,7 @@ func (f *fooApi) Delete(ctx context.Context, name string, deleteValidation rest.
 func (f *fooApi) DeleteCollection(ctx context.Context, deleteValidation rest.ValidateObjectFunc, options *metav1.DeleteOptions, listOptions *metainternalversion.ListOptions) (runtime.Object, error) {
 	namespace := genericapirequest.NamespaceValue(ctx)
 
-	var flist hellov1.FooList
+	var flist hello.FooList
 
 	f.Lock()
 	defer f.Unlock()
@@ -218,7 +220,7 @@ func (f *fooApi) Get(ctx context.Context, name string, options *metav1.GetOption
 	defer f.RUnlock()
 
 	if obj, ok := f.store[key]; !ok {
-		return nil, errors.NewNotFound(hellov1.Resource("foos"), key)
+		return nil, errors.NewNotFound(hello.Resource("foos"), key)
 	} else {
 		return obj, nil
 	}
@@ -226,7 +228,7 @@ func (f *fooApi) Get(ctx context.Context, name string, options *metav1.GetOption
 
 // NewList implements rest.Lister
 func (*fooApi) NewList() runtime.Object {
-	return &hellov1.FooList{}
+	return &hello.FooList{}
 }
 
 // List implements rest.Lister
@@ -236,7 +238,7 @@ func (f *fooApi) List(ctx context.Context, options *metainternalversion.ListOpti
 	f.RLock()
 	defer f.RUnlock()
 
-	var flist hellov1.FooList
+	var flist hello.FooList
 	for _, obj := range f.store {
 		if namespace == "" {
 			flist.Items = append(flist.Items, *obj)
@@ -256,16 +258,17 @@ func (*fooApi) ConvertToTable(ctx context.Context, object runtime.Object, tableO
 
 	table.ColumnDefinitions = []metav1.TableColumnDefinition{
 		{Name: "Name", Type: "string", Format: "name", Description: metav1.ObjectMeta{}.SwaggerDoc()["name"]},
+		{Name: "Status", Type: "string", Format: "status", Description: "status of where the Foo is in its lifecycle"},
 		{Name: "Age", Type: "string", Description: metav1.ObjectMeta{}.SwaggerDoc()["creationTimestamp"]},
-		{Name: "Message", Type: "string", Format: "message", Description: "foo message"},
-		{Name: "Message1", Type: "string", Format: "message1", Description: "foo message plus"},
+		{Name: "Message", Type: "string", Format: "message", Description: "foo message", Priority: 1},        // kubectl -o wide
+		{Name: "Message1", Type: "string", Format: "message1", Description: "foo message plus", Priority: 1}, // kubectl -o wide
 	}
 
 	switch t := object.(type) {
-	case *hellov1.Foo:
+	case *hello.Foo:
 		table.ResourceVersion = t.ResourceVersion
 		addFoosToTable(&table, *t)
-	case *hellov1.FooList:
+	case *hello.FooList:
 		table.ResourceVersion = t.ResourceVersion
 		table.Continue = t.Continue
 		addFoosToTable(&table, t.Items...)
@@ -275,14 +278,14 @@ func (*fooApi) ConvertToTable(ctx context.Context, object runtime.Object, tableO
 	return &table, nil
 }
 
-func addFoosToTable(table *metav1.Table, foos ...hellov1.Foo) {
+func addFoosToTable(table *metav1.Table, foos ...hello.Foo) {
 	for _, foo := range foos {
 		ts := "<unknown>"
 		if timestamp := foo.CreationTimestamp; !timestamp.IsZero() {
 			ts = durationutil.HumanDuration(time.Since(timestamp.Time))
 		}
 		table.Rows = append(table.Rows, metav1.TableRow{
-			Cells:  []interface{}{foo.Name, ts, foo.Spec.Msg, foo.Spec.Msg1},
+			Cells:  []interface{}{foo.Name, foo.Status.Phase, ts, foo.Spec.Config.Msg, foo.Spec.Config.Msg1},
 			Object: runtime.RawExtension{Object: &foo},
 		})
 	}

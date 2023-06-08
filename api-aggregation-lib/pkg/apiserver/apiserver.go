@@ -26,10 +26,9 @@ import (
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	clientrest "k8s.io/client-go/rest"
 
+	hello "github.com/phosae/x-kubernetes/api-aggregation-lib/pkg/api/hello.zeng.dev"
+	"github.com/phosae/x-kubernetes/api-aggregation-lib/pkg/api/hello.zeng.dev/install"
 	fooregistry "github.com/phosae/x-kubernetes/api-aggregation-lib/pkg/registry/hello.zeng.dev/foo"
-	hello "github.com/phosae/x-kubernetes/api/hello.zeng.dev"
-	hellov1 "github.com/phosae/x-kubernetes/api/hello.zeng.dev/v1"
-	hellov1internal "github.com/phosae/x-kubernetes/api-aggregation-lib/pkg/api/hello.zeng.dev/v1"
 )
 
 var (
@@ -41,8 +40,7 @@ var (
 )
 
 func init() {
-	hello.Install(Scheme)
-	hellov1internal.AddDefaultingFuncs(Scheme)
+	install.Install(Scheme)
 
 	// we need to add the options to empty v1
 	metav1.AddToGroupVersion(Scheme, schema.GroupVersion{Group: "", Version: "v1"})
@@ -111,18 +109,21 @@ func (c completedConfig) New() (*HelloApiServer, error) {
 		GenericAPIServer: genericServer,
 	}
 
-	apiGroupInfo := genericapiserver.NewDefaultAPIGroupInfo(hellov1.GroupName, Scheme, metav1.ParameterCodec, Codecs)
-
-	apiGroupInfo.VersionedResourcesStorageMap["v1"] = map[string]rest.Storage{}
-	if c.ExtraConfig.EnableEtcdStorage {
-		etcdstorage, err := fooregistry.NewREST(Scheme, c.GenericConfig.RESTOptionsGetter)
-		if err != nil {
-			return nil, err
+	apiGroupInfo := genericapiserver.NewDefaultAPIGroupInfo(hello.GroupName, Scheme, metav1.ParameterCodec, Codecs)
+	restStorage, err := func() (rest.Storage, error) {
+		if c.ExtraConfig.EnableEtcdStorage {
+			return fooregistry.NewREST(Scheme, c.GenericConfig.RESTOptionsGetter)
+		} else {
+			return fooregistry.NewMemStore(), nil
 		}
-		apiGroupInfo.VersionedResourcesStorageMap["v1"]["foos"] = etcdstorage
-	} else {
-		apiGroupInfo.VersionedResourcesStorageMap["v1"]["foos"] = fooregistry.NewMemStore()
+	}()
+	if err != nil {
+		return nil, err
 	}
+	v1storage := map[string]rest.Storage{"foos": restStorage}
+	v2storage := map[string]rest.Storage{"foos": restStorage}
+	apiGroupInfo.VersionedResourcesStorageMap["v1"] = v1storage
+	apiGroupInfo.VersionedResourcesStorageMap["v2"] = v2storage
 
 	if err := s.GenericAPIServer.InstallAPIGroup(&apiGroupInfo); err != nil {
 		return nil, err
