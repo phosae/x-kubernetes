@@ -8,7 +8,9 @@ package applyconfiguration
 
 import (
 	hellozengdevv1 "github.com/phosae/x-kubernetes/api/generated/applyconfiguration/hello.zeng.dev/v1"
+	hellozengdevv2 "github.com/phosae/x-kubernetes/api/generated/applyconfiguration/hello.zeng.dev/v2"
 	v1 "github.com/phosae/x-kubernetes/api/hello.zeng.dev/v1"
+	v2 "github.com/phosae/x-kubernetes/api/hello.zeng.dev/v2"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 )
 
@@ -21,6 +23,18 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &hellozengdevv1.FooApplyConfiguration{}
 	case v1.SchemeGroupVersion.WithKind("FooSpec"):
 		return &hellozengdevv1.FooSpecApplyConfiguration{}
+
+		// Group=hello.zeng.dev, Version=v2
+	case v2.SchemeGroupVersion.WithKind("Foo"):
+		return &hellozengdevv2.FooApplyConfiguration{}
+	case v2.SchemeGroupVersion.WithKind("FooCondition"):
+		return &hellozengdevv2.FooConditionApplyConfiguration{}
+	case v2.SchemeGroupVersion.WithKind("FooConfig"):
+		return &hellozengdevv2.FooConfigApplyConfiguration{}
+	case v2.SchemeGroupVersion.WithKind("FooSpec"):
+		return &hellozengdevv2.FooSpecApplyConfiguration{}
+	case v2.SchemeGroupVersion.WithKind("FooStatus"):
+		return &hellozengdevv2.FooStatusApplyConfiguration{}
 
 	}
 	return nil

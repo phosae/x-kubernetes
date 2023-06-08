@@ -11,6 +11,7 @@ import (
 	"net/http"
 
 	hellov1 "github.com/phosae/x-kubernetes/api/generated/clientset/versioned/typed/hello.zeng.dev/v1"
+	hellov2 "github.com/phosae/x-kubernetes/api/generated/clientset/versioned/typed/hello.zeng.dev/v2"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"
@@ -19,17 +20,24 @@ import (
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
 	HelloV1() hellov1.HelloV1Interface
+	HelloV2() hellov2.HelloV2Interface
 }
 
 // Clientset contains the clients for groups.
 type Clientset struct {
 	*discovery.DiscoveryClient
 	helloV1 *hellov1.HelloV1Client
+	helloV2 *hellov2.HelloV2Client
 }
 
 // HelloV1 retrieves the HelloV1Client
 func (c *Clientset) HelloV1() hellov1.HelloV1Interface {
 	return c.helloV1
+}
+
+// HelloV2 retrieves the HelloV2Client
+func (c *Clientset) HelloV2() hellov2.HelloV2Interface {
+	return c.helloV2
 }
 
 // Discovery retrieves the DiscoveryClient
@@ -80,6 +88,10 @@ func NewForConfigAndClient(c *rest.Config, httpClient *http.Client) (*Clientset,
 	if err != nil {
 		return nil, err
 	}
+	cs.helloV2, err = hellov2.NewForConfigAndClient(&configShallowCopy, httpClient)
+	if err != nil {
+		return nil, err
+	}
 
 	cs.DiscoveryClient, err = discovery.NewDiscoveryClientForConfigAndClient(&configShallowCopy, httpClient)
 	if err != nil {
@@ -102,6 +114,7 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 func New(c rest.Interface) *Clientset {
 	var cs Clientset
 	cs.helloV1 = hellov1.New(c)
+	cs.helloV2 = hellov2.New(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClient(c)
 	return &cs

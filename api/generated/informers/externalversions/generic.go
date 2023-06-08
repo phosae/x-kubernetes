@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	v1 "github.com/phosae/x-kubernetes/api/hello.zeng.dev/v1"
+	v2 "github.com/phosae/x-kubernetes/api/hello.zeng.dev/v2"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
 )
@@ -43,6 +44,10 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 	// Group=hello.zeng.dev, Version=v1
 	case v1.SchemeGroupVersion.WithResource("foos"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Hello().V1().Foos().Informer()}, nil
+
+		// Group=hello.zeng.dev, Version=v2
+	case v2.SchemeGroupVersion.WithResource("foos"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Hello().V2().Foos().Informer()}, nil
 
 	}
 

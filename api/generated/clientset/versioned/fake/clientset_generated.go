@@ -10,6 +10,8 @@ import (
 	clientset "github.com/phosae/x-kubernetes/api/generated/clientset/versioned"
 	hellov1 "github.com/phosae/x-kubernetes/api/generated/clientset/versioned/typed/hello.zeng.dev/v1"
 	fakehellov1 "github.com/phosae/x-kubernetes/api/generated/clientset/versioned/typed/hello.zeng.dev/v1/fake"
+	hellov2 "github.com/phosae/x-kubernetes/api/generated/clientset/versioned/typed/hello.zeng.dev/v2"
+	fakehellov2 "github.com/phosae/x-kubernetes/api/generated/clientset/versioned/typed/hello.zeng.dev/v2/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
@@ -70,4 +72,9 @@ var (
 // HelloV1 retrieves the HelloV1Client
 func (c *Clientset) HelloV1() hellov1.HelloV1Interface {
 	return &fakehellov1.FakeHelloV1{Fake: &c.Fake}
+}
+
+// HelloV2 retrieves the HelloV2Client
+func (c *Clientset) HelloV2() hellov2.HelloV2Interface {
+	return &fakehellov2.FakeHelloV2{Fake: &c.Fake}
 }

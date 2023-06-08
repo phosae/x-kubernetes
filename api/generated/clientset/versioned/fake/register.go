@@ -8,6 +8,7 @@ package fake
 
 import (
 	hellov1 "github.com/phosae/x-kubernetes/api/hello.zeng.dev/v1"
+	hellov2 "github.com/phosae/x-kubernetes/api/hello.zeng.dev/v2"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -20,6 +21,7 @@ var codecs = serializer.NewCodecFactory(scheme)
 
 var localSchemeBuilder = runtime.SchemeBuilder{
 	hellov1.AddToScheme,
+	hellov2.AddToScheme,
 }
 
 // AddToScheme adds all types of this clientset into the given scheme. This allows composition
