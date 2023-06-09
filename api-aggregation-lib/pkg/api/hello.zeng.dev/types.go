@@ -1,7 +1,6 @@
 package hello
 
 import (
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -61,7 +60,7 @@ const (
 
 type FooCondition struct {
 	Type   FooConditionType
-	Status corev1.ConditionStatus
+	Status metav1.ConditionStatus
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

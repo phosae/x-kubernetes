@@ -14,7 +14,7 @@ import (
 
 	hellozengdev "github.com/phosae/x-kubernetes/api-aggregation-lib/pkg/api/hello.zeng.dev"
 	v2 "github.com/phosae/x-kubernetes/api/hello.zeng.dev/v2"
-	v1 "k8s.io/api/core/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	conversion "k8s.io/apimachinery/pkg/conversion"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )

@@ -8,7 +8,7 @@ package v2
 
 import (
 	v2 "github.com/phosae/x-kubernetes/api/hello.zeng.dev/v2"
-	v1 "k8s.io/api/core/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // FooConditionApplyConfiguration represents an declarative configuration of the FooCondition type for use
