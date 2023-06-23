@@ -1,0 +1,41 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../hello.zeng.dev_foos.yaml
+  - ./k8s.yml
+
+patches:
+  - target:
+      kind: CustomResourceDefinition
+      name: foos.hello.zeng.dev
+    patch: |-
+      - op: add
+        path: /spec/conversion
+        value: {}
+      - op: add
+        path: /spec/conversion/strategy
+        value: Webhook
+      - op: add
+        path: /spec/conversion/webhook
+        value: {}
+      - op: add
+        path: /spec/conversion/webhook/conversionReviewVersions
+        value: ["v1"]
+      - op: add
+        path: /spec/conversion/webhook/clientConfig
+        value: {}
+      - op: add
+        path: /spec/conversion/webhook/clientConfig/caBundle
+        value: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUIrekNDQWFDZ0F3SUJBZ0lRQm12UVRkb1JyblBPUWtlWUlpQTBlVEFLQmdncWhrak9QUVFEQWpBVk1STXcKRVFZRFZRUUtFd3BMZFdKbGNtNWxkR1Z6TUNBWERUY3dNREV3TVRBd01EQXdNRm9ZRHpJd09EUXdNVEk1TVRZdwpNREF3V2pBVk1STXdFUVlEVlFRS0V3cExkV0psY201bGRHVnpNRmt3RXdZSEtvWkl6ajBDQVFZSUtvWkl6ajBECkFRY0RRZ0FFeHNlUXZuTVFwa1l5clRHU1ZtQSsvYURRYm9TQ2pPaXlGZFhhR2hzM05jWTBnQ0ZJQ2hiZVhRdlkKNENhYTk2OFJTMW5zejJEZGxlRjhmUHJhYXI2UlBLT0J6ekNCekRBT0JnTlZIUThCQWY4RUJBTUNBb1F3RXdZRApWUjBsQkF3d0NnWUlLd1lCQlFVSEF3RXdEd1lEVlIwVEFRSC9CQVV3QXdFQi96QWRCZ05WSFE0RUZnUVVSVXhECjJqZkt2cU1WelZ1MFl1NGNHSDR0UWQ4d2RRWURWUjBSQkc0d2JJSU5LaTVrWldaaGRXeDBMbk4yWTRJTEtpNW8KWld4c2J5NXpkbU9DR3lvdVpHVm1ZWFZzZEM1emRtTXVZMngxYzNSbGNpNXNiMk5oYklJWktpNW9aV3hzYnk1egpkbU11WTJ4MWMzUmxjaTVzYjJOaGJJY0Vmd0FBQVljUUFBQUFBQUFBQUFBQUFBQUFBQUFBQVRBS0JnZ3Foa2pPClBRUURBZ05KQURCR0FpRUEwWGgxWkpEKzBRY2JBaFZMQ3FydHZ2dlZLYXJpRlJ0TXdLVWJyQWZoNnFvQ0lRQ1gKczN3WWszdWcrQ2hGejZHc3RyMjM0emVyOXpsd1Y3UUtGeFNOdmdXVTdRPT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
+      - op: add
+        path: /spec/conversion/webhook/clientConfig/service
+        value: {}
+      - op: add
+        path: /spec/conversion/webhook/clientConfig/service/name
+        value: foo-crd-converter
+      - op: add
+        path: /spec/conversion/webhook/clientConfig/service/namespace
+        value: default
+      - op: add
+        path: /spec/conversion/webhook/clientConfig/service/path
+        value: /convert/hello.zeng.dev
