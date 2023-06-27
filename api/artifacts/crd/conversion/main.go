@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -14,10 +15,11 @@ import (
 	apixv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	kjson "k8s.io/apimachinery/pkg/runtime/serializer/json"
+	"k8s.io/apimachinery/pkg/runtime/serializer/versioning"
 
-	hellov1 "github.com/phosae/x-kubernetes/api/hello.zeng.dev/v1"
-	hellov2 "github.com/phosae/x-kubernetes/api/hello.zeng.dev/v2"
+	helloinstall "zeng.dev/crdconversion/internal/api/hello.zeng.dev/install"
 )
 
 var (
@@ -30,8 +32,7 @@ var (
 func init() {
 	apix.Install(scheme)
 	metav1.AddMetaToScheme(scheme)
-	hellov1.AddToScheme(scheme)
-	hellov2.AddToScheme(scheme)
+	helloinstall.Install(scheme)
 
 	cert := os.Getenv("TLS_CERT")
 	key := os.Getenv("TLS_KEY")
@@ -115,60 +116,36 @@ func Convert(w http.ResponseWriter, r *http.Request) {
 func ConvertHello(req *apixv1.ConversionRequest) (*apixv1.ConversionResponse, error) {
 	resp := apixv1.ConversionResponse{}
 
-	switch req.DesiredAPIVersion {
-	default:
-		return nil, fmt.Errorf("unsupported apiVersion/" + req.DesiredAPIVersion)
-	case "hello.zeng.dev/v1":
-		for _, o := range req.Objects {
-			src, _, err := kjsonSerializer.Decode(o.Raw, nil, nil)
-			if err != nil {
-				return nil, err
-			}
-
-			switch in := src.(type) {
-			case *hellov2.Foo:
-				objv1 := &hellov1.Foo{TypeMeta: metav1.TypeMeta{Kind: "Foo", APIVersion: "hello.zeng.dev/v1"}}
-				convertV2ToV1(in, objv1)
-				resp.ConvertedObjects = append(resp.ConvertedObjects, runtime.RawExtension{Object: objv1})
-			default:
-				return nil, fmt.Errorf("unsupported type %v", in)
-			}
-		}
-	case "hello.zeng.dev/v2":
-		for _, o := range req.Objects {
-			src, _, err := kjsonSerializer.Decode(o.Raw, nil, nil)
-			if err != nil {
-				return nil, fmt.Errorf("err decode ConversionReview.request.objects: %s", err)
-			}
-
-			switch in := src.(type) {
-			case *hellov1.Foo:
-				objv2 := &hellov2.Foo{TypeMeta: metav1.TypeMeta{Kind: "Foo", APIVersion: "hello.zeng.dev/v2"}}
-				convertV1ToV2(in, objv2)
-				resp.ConvertedObjects = append(resp.ConvertedObjects, runtime.RawExtension{Object: objv2})
-			default:
-				return nil, fmt.Errorf("unsupported type %v", in)
-			}
-		}
+	desiredGV, err := schema.ParseGroupVersion(req.DesiredAPIVersion)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse desired apiVersion: %v", err)
 	}
+
+	groupVersioner := schema.GroupVersions([]schema.GroupVersion{desiredGV})
+	codec := versioning.NewCodec(
+		kjsonSerializer,                       // decoder
+		kjsonSerializer,                       // encoder
+		runtime.UnsafeObjectConvertor(scheme), // convertor
+		scheme,                                // creator
+		scheme,                                // typer
+		nil,                                   // defaulter
+		groupVersioner,                        // encodeVersion
+		runtime.InternalGroupVersioner,        // decodeVersion
+		scheme.Name(),                         // originalSchemeName
+	)
+
+	convertedObjects := make([]runtime.RawExtension, len(req.Objects))
+	for i, raw := range req.Objects {
+		decodedObject, _, err := codec.Decode(raw.Raw, nil, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode into apiVersion: %v", err)
+		}
+		buf := bytes.Buffer{}
+		if err := codec.Encode(decodedObject, &buf); err != nil {
+			return nil, fmt.Errorf("failed to convert to desired apiVersion: %v", err)
+		}
+		convertedObjects[i] = runtime.RawExtension{Raw: buf.Bytes()}
+	}
+	resp.ConvertedObjects = convertedObjects
 	return &resp, nil
-}
-
-const AnnotationImage = "spec.image"
-
-func convertV1ToV2(in *hellov1.Foo, out *hellov2.Foo) {
-	out.ObjectMeta = in.ObjectMeta
-	out.Spec.Image = out.Annotations[AnnotationImage]
-	out.Spec.Config.Msg = in.Spec.Msg
-	out.Spec.Config.Msg1 = in.Spec.Msg1
-}
-
-func convertV2ToV1(in *hellov2.Foo, out *hellov1.Foo) {
-	out.ObjectMeta = in.ObjectMeta
-	if out.Annotations == nil {
-		out.Annotations = map[string]string{}
-	}
-	out.Annotations[AnnotationImage] = in.Spec.Image
-	out.Spec.Msg = in.Spec.Config.Msg
-	out.Spec.Msg1 = in.Spec.Config.Msg1
 }
