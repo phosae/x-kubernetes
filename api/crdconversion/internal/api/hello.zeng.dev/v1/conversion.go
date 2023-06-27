@@ -3,7 +3,7 @@ package v1
 import (
 	"k8s.io/apimachinery/pkg/conversion"
 
-	hellozengdev "zeng.dev/crdconversion/internal/api/hello.zeng.dev"
+	hellozengdev "github.com/phosae/x-kubernetes/api/crdconversion/internal/api/hello.zeng.dev"
 	hellov1 "github.com/phosae/x-kubernetes/api/hello.zeng.dev/v1"
 )
 

@@ -1,4 +1,4 @@
-module zeng.dev/crdconversion
+module github.com/phosae/x-kubernetes/api/crdconversion
 
 go 1.20
 
@@ -26,4 +26,4 @@ require (
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
 
-replace github.com/phosae/x-kubernetes/api => ../../..
+replace github.com/phosae/x-kubernetes/api => ../

@@ -1,7 +1,7 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - ../hello.zeng.dev_foos.yaml
+  - ../artifacts/crd/hello.zeng.dev_foos.yaml
   - ./k8s.yml
 
 patches:

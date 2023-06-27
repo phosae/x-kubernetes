@@ -12,7 +12,7 @@ package v2
 import (
 	unsafe "unsafe"
 
-	hellozengdev "zeng.dev/crdconversion/internal/api/hello.zeng.dev"
+	hellozengdev "github.com/phosae/x-kubernetes/api/crdconversion/internal/api/hello.zeng.dev"
 	v2 "github.com/phosae/x-kubernetes/api/hello.zeng.dev/v2"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	conversion "k8s.io/apimachinery/pkg/conversion"

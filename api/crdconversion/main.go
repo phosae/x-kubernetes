@@ -19,7 +19,7 @@ import (
 	kjson "k8s.io/apimachinery/pkg/runtime/serializer/json"
 	"k8s.io/apimachinery/pkg/runtime/serializer/versioning"
 
-	helloinstall "zeng.dev/crdconversion/internal/api/hello.zeng.dev/install"
+	helloinstall "github.com/phosae/x-kubernetes/api/crdconversion/internal/api/hello.zeng.dev/install"
 )
 
 var (

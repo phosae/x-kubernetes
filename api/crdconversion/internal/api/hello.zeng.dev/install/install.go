@@ -8,9 +8,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 
-	hello "zeng.dev/crdconversion/internal/api/hello.zeng.dev"
-	hellov1 "zeng.dev/crdconversion/internal/api/hello.zeng.dev/v1"
-	hellov2 "zeng.dev/crdconversion/internal/api/hello.zeng.dev/v2"
+	hello "github.com/phosae/x-kubernetes/api/crdconversion/internal/api/hello.zeng.dev"
+	hellov1 "github.com/phosae/x-kubernetes/api/crdconversion/internal/api/hello.zeng.dev/v1"
+	hellov2 "github.com/phosae/x-kubernetes/api/crdconversion/internal/api/hello.zeng.dev/v2"
 )
 
 // Install registers the API group and adds types to a scheme

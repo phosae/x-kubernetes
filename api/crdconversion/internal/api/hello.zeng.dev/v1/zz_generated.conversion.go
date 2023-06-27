@@ -10,7 +10,7 @@ boilerplate text in generated file header
 package v1
 
 import (
-	hellozengdev "zeng.dev/crdconversion/internal/api/hello.zeng.dev"
+	hellozengdev "github.com/phosae/x-kubernetes/api/crdconversion/internal/api/hello.zeng.dev"
 	v1 "github.com/phosae/x-kubernetes/api/hello.zeng.dev/v1"
 	conversion "k8s.io/apimachinery/pkg/conversion"
 	runtime "k8s.io/apimachinery/pkg/runtime"
