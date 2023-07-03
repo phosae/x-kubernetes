@@ -14,6 +14,7 @@ import (
 	"k8s.io/apiserver/pkg/storage/names"
 
 	hello "github.com/phosae/x-kubernetes/api-aggregation-lib/pkg/api/hello.zeng.dev"
+	"github.com/phosae/x-kubernetes/api-aggregation-lib/pkg/api/hello.zeng.dev/validation"
 )
 
 // NewStrategy creates and returns a fooStrategy instance
@@ -61,8 +62,8 @@ func (fooStrategy) PrepareForUpdate(ctx context.Context, obj, old runtime.Object
 }
 
 func (fooStrategy) Validate(ctx context.Context, obj runtime.Object) field.ErrorList {
-	_ = obj.(*hello.Foo)
-	return nil
+	foo := obj.(*hello.Foo)
+	return validation.ValidateFoo(foo)
 }
 
 // WarningsOnCreate returns warnings for the creation of the given object.
