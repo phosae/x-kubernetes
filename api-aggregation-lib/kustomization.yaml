@@ -16,4 +16,4 @@ patches:
       value: ko://github.com/phosae/x-kubernetes/api-aggregation-lib
     - op: replace
       path: /spec/template/spec/containers/0/args
-      value: ["--enable-etcd-storage","--etcd-servers=http://localhost:2379", "--enable-auth", "-v", "6"]
+      value: ["--enable-etcd-storage","--etcd-servers=http://localhost:2379", "--enable-auth", "--enable-admission", "-v", "6"]

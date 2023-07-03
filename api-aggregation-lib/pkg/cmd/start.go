@@ -13,9 +13,11 @@ import (
 	openapinamer "k8s.io/apiserver/pkg/endpoints/openapi"
 	"k8s.io/apiserver/pkg/features"
 	genericapiserver "k8s.io/apiserver/pkg/server"
+	"k8s.io/apiserver/pkg/server/options"
 	genericoptions "k8s.io/apiserver/pkg/server/options"
 	serverstorage "k8s.io/apiserver/pkg/server/storage"
 	"k8s.io/apiserver/pkg/storage/storagebackend"
+	"k8s.io/apiserver/pkg/util/feature"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -23,6 +25,7 @@ import (
 	"k8s.io/component-base/term"
 	"k8s.io/klog/v2"
 
+	"github.com/phosae/x-kubernetes/api-aggregation-lib/pkg/admisssion/disallow"
 	myapiserver "github.com/phosae/x-kubernetes/api-aggregation-lib/pkg/apiserver"
 	generatedopenapi "github.com/phosae/x-kubernetes/api/generated/openapi"
 	hellov1 "github.com/phosae/x-kubernetes/api/hello.zeng.dev/v1"
@@ -41,6 +44,9 @@ type Options struct {
 	EnableAuth     bool
 	Authentication *genericoptions.DelegatingAuthenticationOptions
 	Authorization  *genericoptions.DelegatingAuthorizationOptions
+
+	EnableAdmission bool
+	Admission       *genericoptions.AdmissionOptions
 }
 
 func (o *Options) Flags() (fs cliflag.NamedFlagSets) {
@@ -56,11 +62,17 @@ func (o *Options) Flags() (fs cliflag.NamedFlagSets) {
 	msfs.BoolVar(&o.EnableAuth, "enable-auth", o.EnableAuth, "If true, enable authn and authz")
 	o.Authentication.AddFlags(fs.FlagSet("apiserver authentication"))
 	o.Authorization.AddFlags(fs.FlagSet("apiserver authorization"))
+
+	msfs.BoolVar(&o.EnableAdmission, "enable-admission", o.EnableAdmission, "If true, enable admission plugins")
 	return fs
 }
 
 // Complete fills in fields required to have valid data
-func (o *Options) Complete() error { return nil }
+func (o *Options) Complete() error {
+	disallow.Register(o.Admission.Plugins)
+	o.Admission.RecommendedPluginOrder = append(o.Admission.RecommendedPluginOrder, "DisallowFoo")
+	return nil
+}
 
 // Validate validates ServerOptions
 func (o Options) Validate(args []string) error {
@@ -154,6 +166,17 @@ func (o Options) ApiserverConfig() (*genericapiserver.RecommendedConfig, error) 
 		}
 	}
 
+	if o.EnableAdmission {
+		(&options.CoreAPIOptions{}).ApplyTo(serverConfig) // init SharedInformerFactory
+
+		// we can use LoopbackClientConfig for local resources
+		// client, err := helloclientset.NewForConfig(serverConfig.LoopbackClientConfig)
+		// informerFactory := helloinformers.NewSharedInformerFactory(client, serverConfig.LoopbackClientConfig.Timeout)
+		// initializers := []admission.PluginInitializer{//} */
+
+		o.Admission.ApplyTo(&serverConfig.Config, serverConfig.SharedInformerFactory, serverConfig.ClientConfig, feature.DefaultFeatureGate)
+	}
+
 	return serverConfig, nil
 }
 
@@ -190,6 +213,7 @@ func NewHelloServerCommand(stopCh <-chan struct{}) *cobra.Command {
 		Etcd:           genericoptions.NewEtcdOptions(storagebackend.NewDefaultConfig(defaultEtcdPathPrefix, nil)),
 		Authentication: genericoptions.NewDelegatingAuthenticationOptions(),
 		Authorization:  genericoptions.NewDelegatingAuthorizationOptions(),
+		Admission:      genericoptions.NewAdmissionOptions(),
 	}
 	opts.Etcd.StorageConfig.EncodeVersioner = runtime.NewMultiGroupVersioner(hellov1.SchemeGroupVersion, schema.GroupKind{Group: hellov1.GroupName})
 	// opts.Etcd.DefaultStorageMediaType = "application/vnd.kubernetes.protobuf"
