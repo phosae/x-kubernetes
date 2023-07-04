@@ -21,6 +21,11 @@ containerdConfigPatches:
 - |-
   [plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:${reg_port}"]
     endpoint = ["http://${reg_name}:5000"]
+featureGates:
+  "ValidatingAdmissionPolicy": true          # alpha v1.26
+  "UserNamespacesStatelessPodsSupport": true # alpha v1.25
+runtimeConfig:
+  "api/all": true # enable all built-in APIs
 nodes:
   - role: control-plane
     image: $IMAGE
