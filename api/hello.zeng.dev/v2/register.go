@@ -28,6 +28,7 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
 		&Foo{},
 		&FooList{},
+		&Config{},
 	)
 	// add common meta types (i.e WatchEvent, ListOptions, ...) to the SchemeGroupVersion
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)

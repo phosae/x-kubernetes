@@ -22,6 +22,8 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/phosae/x-kubernetes/api/hello.zeng.dev/v1.Foo":          schema_x_kubernetes_api_hellozengdev_v1_Foo(ref),
 		"github.com/phosae/x-kubernetes/api/hello.zeng.dev/v1.FooList":      schema_x_kubernetes_api_hellozengdev_v1_FooList(ref),
 		"github.com/phosae/x-kubernetes/api/hello.zeng.dev/v1.FooSpec":      schema_x_kubernetes_api_hellozengdev_v1_FooSpec(ref),
+		"github.com/phosae/x-kubernetes/api/hello.zeng.dev/v2.Config":       schema_x_kubernetes_api_hellozengdev_v2_Config(ref),
+		"github.com/phosae/x-kubernetes/api/hello.zeng.dev/v2.ConfigSpec":   schema_x_kubernetes_api_hellozengdev_v2_ConfigSpec(ref),
 		"github.com/phosae/x-kubernetes/api/hello.zeng.dev/v2.Foo":          schema_x_kubernetes_api_hellozengdev_v2_Foo(ref),
 		"github.com/phosae/x-kubernetes/api/hello.zeng.dev/v2.FooCondition": schema_x_kubernetes_api_hellozengdev_v2_FooCondition(ref),
 		"github.com/phosae/x-kubernetes/api/hello.zeng.dev/v2.FooConfig":    schema_x_kubernetes_api_hellozengdev_v2_FooConfig(ref),
@@ -190,6 +192,76 @@ func schema_x_kubernetes_api_hellozengdev_v1_FooSpec(ref common.ReferenceCallbac
 						SchemaProps: spec.SchemaProps{
 							Description: "Msg1 provides some verbose information",
 							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"msg"},
+			},
+		},
+	}
+}
+
+func schema_x_kubernetes_api_hellozengdev_v2_Config(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Config is the config subresource of Foo",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/phosae/x-kubernetes/api/hello.zeng.dev/v2.ConfigSpec"),
+						},
+					},
+				},
+				Required: []string{"spec"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/phosae/x-kubernetes/api/hello.zeng.dev/v2.ConfigSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_x_kubernetes_api_hellozengdev_v2_ConfigSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"msg": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Msg says hello world!",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"msg1": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Msg1 provides some verbose information",
 							Type:        []string{"string"},
 							Format:      "",
 						},
