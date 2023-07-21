@@ -110,20 +110,24 @@ func (c completedConfig) New() (*HelloApiServer, error) {
 	}
 
 	apiGroupInfo := genericapiserver.NewDefaultAPIGroupInfo(hello.GroupName, Scheme, metav1.ParameterCodec, Codecs)
-	restStorage, err := func() (rest.Storage, error) {
-		if c.ExtraConfig.EnableEtcdStorage {
-			return fooregistry.NewREST(Scheme, c.GenericConfig.RESTOptionsGetter)
-		} else {
-			return fooregistry.NewMemStore(), nil
+
+	if !c.ExtraConfig.EnableEtcdStorage {
+		restStorage := fooregistry.NewMemStore()
+		v1storage := map[string]rest.Storage{"foos": restStorage}
+		v2storage := map[string]rest.Storage{"foos": restStorage}
+		apiGroupInfo.VersionedResourcesStorageMap["v1"] = v1storage
+		apiGroupInfo.VersionedResourcesStorageMap["v2"] = v2storage
+	} else {
+		restStorage, err := fooregistry.NewREST(Scheme, c.GenericConfig.RESTOptionsGetter)
+		if err != nil {
+			return nil, err
 		}
-	}()
-	if err != nil {
-		return nil, err
+
+		v1storage := map[string]rest.Storage{"foos": restStorage.Foo}
+		v2storage := map[string]rest.Storage{"foos": restStorage.Foo, "foos/config": restStorage.Config}
+		apiGroupInfo.VersionedResourcesStorageMap["v1"] = v1storage
+		apiGroupInfo.VersionedResourcesStorageMap["v2"] = v2storage
 	}
-	v1storage := map[string]rest.Storage{"foos": restStorage}
-	v2storage := map[string]rest.Storage{"foos": restStorage}
-	apiGroupInfo.VersionedResourcesStorageMap["v1"] = v1storage
-	apiGroupInfo.VersionedResourcesStorageMap["v2"] = v2storage
 
 	if err := s.GenericAPIServer.InstallAPIGroup(&apiGroupInfo); err != nil {
 		return nil, err
