@@ -124,7 +124,7 @@ func (c completedConfig) New() (*HelloApiServer, error) {
 		}
 
 		v1storage := map[string]rest.Storage{"foos": restStorage.Foo}
-		v2storage := map[string]rest.Storage{"foos": restStorage.Foo, "foos/config": restStorage.Config}
+		v2storage := map[string]rest.Storage{"foos": restStorage.Foo, "foos/config": restStorage.Config, "foos/status": restStorage.Status}
 		apiGroupInfo.VersionedResourcesStorageMap["v1"] = v1storage
 		apiGroupInfo.VersionedResourcesStorageMap["v2"] = v2storage
 	}

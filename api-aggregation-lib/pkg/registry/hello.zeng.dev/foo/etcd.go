@@ -22,6 +22,7 @@ type REST struct {
 type fooStorage struct {
 	Foo    *REST
 	Config *ConfigREST
+	Status *StatusREST
 }
 
 var _ rest.ShortNamesProvider = &REST{}
@@ -33,6 +34,7 @@ func (*REST) ShortNames() []string {
 // NewREST returns a RESTStorage object that will work against API services.
 func NewREST(scheme *runtime.Scheme, optsGetter generic.RESTOptionsGetter) (*fooStorage, error) {
 	strategy := NewStrategy(scheme)
+	statusStrategy := NewStatusStrategy(strategy)
 
 	store := &genericregistry.Store{
 		NewFunc:                   func() runtime.Object { return &hello.Foo{} },
@@ -52,8 +54,11 @@ func NewREST(scheme *runtime.Scheme, optsGetter generic.RESTOptionsGetter) (*foo
 	}
 
 	configStore := *store
+	statusStore := *store
+	statusStore.UpdateStrategy = statusStrategy
+	statusStore.ResetFieldsStrategy = statusStrategy
 
-	return &fooStorage{&REST{store}, &ConfigREST{Store: &configStore}}, nil
+	return &fooStorage{&REST{store}, &ConfigREST{Store: &configStore}, &StatusREST{&statusStore}}, nil
 }
 
 // ConfigREST implements the config subresource for a Foo
@@ -89,6 +94,10 @@ func (r *ConfigREST) Get(ctx context.Context, name string, options *metav1.GetOp
 }
 
 // Update alters the spec.config subset of an object.
+// Normally option createValidation and option updateValidation are validating admission control funcs
+//
+//	see https://github.com/kubernetes/kubernetes/blob/d25c0a1bdb81b7a9b52abf10687d701c82704602/staging/src/k8s.io/apiserver/pkg/endpoints/handlers/patch.go#L270
+//	see https://github.com/kubernetes/kubernetes/blob/d25c0a1bdb81b7a9b52abf10687d701c82704602/staging/src/k8s.io/apiserver/pkg/endpoints/handlers/update.go#L210-L216
 func (r *ConfigREST) Update(ctx context.Context, name string, objInfo rest.UpdatedObjectInfo, createValidation rest.ValidateObjectFunc, updateValidation rest.ValidateObjectUpdateFunc, forceAllowCreate bool, options *metav1.UpdateOptions) (runtime.Object, bool, error) {
 	obj, _, err := r.Store.Update(
 		ctx,
@@ -203,4 +212,41 @@ func (c *configUpdatedObjectInfo) UpdatedObject(ctx context.Context, oldObj runt
 	foo.ResourceVersion = config.ResourceVersion
 
 	return foo, nil
+}
+
+// StatusREST implements the REST endpoint for changing the status of a foo.
+type StatusREST struct {
+	store *genericregistry.Store
+}
+
+// New creates a new foo resource
+func (r *StatusREST) New() runtime.Object {
+	return &hello.Foo{}
+}
+
+// Destroy cleans up resources on shutdown.
+func (r *StatusREST) Destroy() {
+	// Given that underlying store is shared with REST,
+	// we don't destroy it here explicitly.
+}
+
+// Get retrieves the object from the storage. It is required to support Patch.
+func (r *StatusREST) Get(ctx context.Context, name string, options *metav1.GetOptions) (runtime.Object, error) {
+	return r.store.Get(ctx, name, options)
+}
+
+// Update alters the status subset of an object.
+func (r *StatusREST) Update(ctx context.Context, name string, objInfo rest.UpdatedObjectInfo, createValidation rest.ValidateObjectFunc, updateValidation rest.ValidateObjectUpdateFunc, forceAllowCreate bool, options *metav1.UpdateOptions) (runtime.Object, bool, error) {
+	// We are explicitly setting forceAllowCreate to false in the call to the underlying storage because
+	// subresources should never allow create on update.
+	return r.store.Update(ctx, name, objInfo, createValidation, updateValidation, false, options)
+}
+
+// GetResetFields implements rest.ResetFieldsStrategy
+func (r *StatusREST) GetResetFields() map[fieldpath.APIVersion]*fieldpath.Set {
+	return r.store.GetResetFields()
+}
+
+func (r *StatusREST) ConvertToTable(ctx context.Context, object runtime.Object, tableOptions runtime.Object) (*metav1.Table, error) {
+	return r.store.ConvertToTable(ctx, object, tableOptions)
 }
