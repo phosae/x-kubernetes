@@ -23,6 +23,7 @@ type fooStorage struct {
 	Foo    *REST
 	Config *ConfigREST
 	Status *StatusREST
+	Base64 *Base64REST
 }
 
 var _ rest.ShortNamesProvider = &REST{}
@@ -58,7 +59,7 @@ func NewREST(scheme *runtime.Scheme, optsGetter generic.RESTOptionsGetter) (*foo
 	statusStore.UpdateStrategy = statusStrategy
 	statusStore.ResetFieldsStrategy = statusStrategy
 
-	return &fooStorage{&REST{store}, &ConfigREST{Store: &configStore}, &StatusREST{&statusStore}}, nil
+	return &fooStorage{&REST{store}, &ConfigREST{Store: &configStore}, &StatusREST{&statusStore}, NewBase64REST(store, scheme)}, nil
 }
 
 // ConfigREST implements the config subresource for a Foo
