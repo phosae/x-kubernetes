@@ -1,4 +1,4 @@
-package v2
+package v1beta1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -6,10 +6,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-const GroupName = "hello.zeng.dev"
+const GroupName = "transformation.zeng.dev"
 
 // SchemeGroupVersion is group version used to register these objects
-var SchemeGroupVersion = schema.GroupVersion{Group: GroupName, Version: "v2"}
+var SchemeGroupVersion = schema.GroupVersion{Group: GroupName, Version: "v1beta1"}
 
 var (
 	SchemeBuilder      runtime.SchemeBuilder
@@ -26,9 +26,7 @@ func init() {
 // Adds the list of known types to the given scheme.
 func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
-		&Foo{},
-		&FooList{},
-		&Config{},
+		&Base64{},
 	)
 	// add common meta types (i.e WatchEvent, ListOptions, ...) to the SchemeGroupVersion
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)

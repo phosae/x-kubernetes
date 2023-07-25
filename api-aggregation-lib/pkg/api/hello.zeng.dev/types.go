@@ -71,3 +71,21 @@ type FooList struct {
 
 	Items []Foo
 }
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// Config is the config subresource of Foo
+type Config struct {
+	metav1.TypeMeta
+	metav1.ObjectMeta
+
+	Spec ConfigSpec
+}
+
+type ConfigSpec struct {
+	// Msg says hello world!
+	Msg string
+	// Msg1 provides some verbose information
+	// +optional
+	Msg1 string
+}

@@ -12,6 +12,7 @@ import (
 	"k8s.io/apiserver/pkg/registry/generic"
 	"k8s.io/apiserver/pkg/storage"
 	"k8s.io/apiserver/pkg/storage/names"
+	"sigs.k8s.io/structured-merge-diff/v4/fieldpath"
 
 	hello "github.com/phosae/x-kubernetes/api-aggregation-lib/pkg/api/hello.zeng.dev"
 	"github.com/phosae/x-kubernetes/api-aggregation-lib/pkg/api/hello.zeng.dev/validation"
@@ -53,6 +54,18 @@ type fooStrategy struct {
 
 func (fooStrategy) NamespaceScoped() bool {
 	return true
+}
+
+// GetResetFields returns the set of fields that get reset by the strategy
+// and should not be modified by the user.
+func (fooStrategy) GetResetFields() map[fieldpath.APIVersion]*fieldpath.Set {
+	fields := map[fieldpath.APIVersion]*fieldpath.Set{
+		"v1": fieldpath.NewSet(
+			fieldpath.MakePathOrDie("status"),
+		),
+	}
+
+	return fields
 }
 
 func (fooStrategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
@@ -112,4 +125,43 @@ func (fooStrategy) ConvertToTable(ctx context.Context, object runtime.Object, ta
 	}
 
 	return &table, nil
+}
+
+// NewStrategy creates and returns a fooStrategy instance
+func NewStatusStrategy(s fooStrategy) fooStatusStrategy {
+	return fooStatusStrategy{fooStrategy: s}
+}
+
+type fooStatusStrategy struct {
+	fooStrategy
+}
+
+// GetResetFields returns the set of fields that get reset by the strategy
+// and should not be modified by the user.
+func (fooStatusStrategy) GetResetFields() map[fieldpath.APIVersion]*fieldpath.Set {
+	return map[fieldpath.APIVersion]*fieldpath.Set{
+		"v1": fieldpath.NewSet(
+			fieldpath.MakePathOrDie("spec"),
+			fieldpath.MakePathOrDie("metadata", "deletionTimestamp"),
+			fieldpath.MakePathOrDie("metadata", "ownerReferences"),
+		),
+	}
+}
+
+func (fooStatusStrategy) PrepareForUpdate(ctx context.Context, obj, old runtime.Object) {
+	newFoo := obj.(*hello.Foo)
+	oldFoo := old.(*hello.Foo)
+	newFoo.Spec = oldFoo.Spec
+	newFoo.DeletionTimestamp = nil
+
+	newFoo.OwnerReferences = oldFoo.OwnerReferences
+}
+
+func (fooStatusStrategy) ValidateUpdate(ctx context.Context, obj, old runtime.Object) field.ErrorList {
+	return field.ErrorList{}
+}
+
+// WarningsOnUpdate returns warnings for the given update.
+func (fooStatusStrategy) WarningsOnUpdate(ctx context.Context, obj, old runtime.Object) []string {
+	return nil
 }

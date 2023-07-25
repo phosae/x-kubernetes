@@ -16,6 +16,22 @@ import "k8s.io/apimachinery/pkg/runtime/schema/generated.proto";
 // Package-wide variables from generator "generated".
 option go_package = "github.com/phosae/x-kubernetes/api/hello.zeng.dev/v2";
 
+// Config is the config subresource of Foo
+message Config {
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+
+  optional ConfigSpec spec = 2;
+}
+
+message ConfigSpec {
+  // Msg says hello world!
+  optional string msg = 1;
+
+  // Msg1 provides some verbose information
+  // +optional
+  optional string msg1 = 2;
+}
+
 message Foo {
   optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
 

@@ -1,19 +1,12 @@
-package hello
+package transformation
 
 import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-var (
-	// SchemeBuilder stores functions to add things to a scheme.
-	SchemeBuilder = runtime.NewSchemeBuilder(addKnownTypes)
-	// AddToScheme applies all stored functions t oa scheme.
-	AddToScheme = SchemeBuilder.AddToScheme
-)
-
 // GroupName is the group name use in this package
-const GroupName = "hello.zeng.dev"
+const GroupName = "transformation.zeng.dev"
 
 // SchemeGroupVersion is group version used to register these objects
 var SchemeGroupVersion = schema.GroupVersion{Group: GroupName, Version: runtime.APIVersionInternal}
@@ -28,12 +21,16 @@ func Resource(resource string) schema.GroupResource {
 	return SchemeGroupVersion.WithResource(resource).GroupResource()
 }
 
-// Adds the list of known types to the given scheme.
+var (
+	// SchemeBuilder points to a list of functions added to Scheme.
+	SchemeBuilder = runtime.NewSchemeBuilder(addKnownTypes)
+	// AddToScheme applies all the stored functions to the scheme.
+	AddToScheme = SchemeBuilder.AddToScheme
+)
+
 func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
-		&Foo{},
-		&FooList{},
-		&Config{},
+		&Base64{},
 	)
 	return nil
 }

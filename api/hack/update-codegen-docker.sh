@@ -23,4 +23,4 @@ docker run -it --rm -u root \
     -v ${PWD}:/go/src/${PROJECT_PACKAGE}\
     -w /go/src/${PROJECT_PACKAGE}\
     zengxu/kube-code-generator:v1.28.0-alpha.1\
-    update-generated-protobuf.sh github.com/phosae/x-kubernetes/api/hello.zeng.dev/v1,github.com/phosae/x-kubernetes/api/hello.zeng.dev/v2
+    update-generated-protobuf.sh github.com/phosae/x-kubernetes/api/hello.zeng.dev/v1,github.com/phosae/x-kubernetes/api/hello.zeng.dev/v2,github.com/phosae/x-kubernetes/api/transformation/v1beta1

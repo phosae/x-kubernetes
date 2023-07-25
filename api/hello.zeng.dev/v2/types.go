@@ -72,3 +72,21 @@ type FooList struct {
 
 	Items []Foo `json:"items" protobuf:"bytes,2,rep,name=items"`
 }
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// Config is the config subresource of Foo
+type Config struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+
+	Spec ConfigSpec `json:"spec" protobuf:"bytes,2,opt,name=spec"`
+}
+
+type ConfigSpec struct {
+	// Msg says hello world!
+	Msg string `json:"msg" protobuf:"bytes,1,opt,name=msg"`
+	// Msg1 provides some verbose information
+	// +optional
+	Msg1 string `json:"msg1,omitempty" protobuf:"bytes,2,opt,name=msg1"`
+}
