@@ -162,6 +162,8 @@ func toConfigUpdateValidation(f rest.ValidateObjectUpdateFunc) rest.ValidateObje
 }
 
 // configUpdatedObjectInfo transforms existing foo -> existing config -> new config -> new foo
+// maybe or not: impelements custom managedfields for config,
+// like https://github.com/kubernetes/kubernetes/blob/7e0a9a7f4e70e4cc6f5dd49917d18101a8e1a25c/pkg/registry/apps/replicaset/storage/storage.go#L320 
 type configUpdatedObjectInfo struct {
 	name       string
 	reqObjInfo rest.UpdatedObjectInfo
