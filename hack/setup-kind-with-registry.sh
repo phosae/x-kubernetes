@@ -29,6 +29,10 @@ runtimeConfig:
 nodes:
   - role: control-plane
     image: $IMAGE
+    extraPortMappings:
+    - containerPort: 30443 # expose apiserver-proxy on host
+      hostPort: 30443
+      protocol: TCP
   - role: worker
     image: $IMAGE
 networking:
@@ -52,3 +56,5 @@ data:
     host: "localhost:${reg_port}"
     help: "https://kind.sigs.k8s.io/docs/user/local-registry/"
 EOF
+
+kubectl taint node kind-control-plane node-role.kubernetes.io/control-plane:NoSchedule-
