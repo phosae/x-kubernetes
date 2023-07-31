@@ -31,7 +31,7 @@ subjects:
   namespace: hello
 ---
 # bind the cluster-admin role to work as the kube-apiserver
-# can be an anohter clusterrole/role with smaller permissions
+# can be an another clusterrole/role with smaller permissions
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
