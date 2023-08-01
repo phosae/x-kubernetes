@@ -178,13 +178,3 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	p.k8sProxy.ServeHTTP(w, r)
 }
-
-func WriteErr(w http.ResponseWriter, r *http.Request, codecs serializer.CodecFactory, err error, mapper func(error) *apierrors.StatusError) {
-	var status *apierrors.StatusError
-	if s, ok := err.(*apierrors.StatusError); ok {
-		status = s
-	} else {
-		status = mapper(err)
-	}
-	responsewriters.WriteObjectNegotiated(codecs, negotiation.DefaultEndpointRestrictions, schema.GroupVersion{}, w, r, int(status.Status().Code), &status.ErrStatus, false)
-}

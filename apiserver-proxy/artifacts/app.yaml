@@ -41,7 +41,15 @@ spec:
       serviceAccountName: apiserver-proxy
       containers:
         - image: ko://github.com/phosae/x-kubernetes/apiserver-proxy
-          args: ["--cert-dir=/etc/kubernetes/pki", "--secure-port=6443", "-v=6"]
+          args:
+            [
+              "--cert-dir=/etc/kubernetes/pki",
+              "--secure-port=6443",
+              "--authentication-token-webhook-cache-ttl=10s",
+              "--authorization-webhook-cache-authorized-ttl=10s",
+              "--authorization-webhook-cache-unauthorized-ttl=5s",
+              "-v=6",
+            ]
           name: apiserver-proxy
           ports:
             - containerPort: 6443
