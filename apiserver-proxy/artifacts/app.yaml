@@ -1,0 +1,62 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hello
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: apiserver-proxy
+  namespace: hello
+spec:
+  type: NodePort
+  ports:
+    - port: 443
+      protocol: TCP
+      targetPort: 6443
+      nodePort: 30443
+  selector:
+    app: apiserver-proxy
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: apiserver-proxy
+    apiserver: "true"
+  name: apiserver-proxy
+  namespace: hello
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: apiserver-proxy
+      apiserver: "true"
+  template:
+    metadata:
+      labels:
+        app: apiserver-proxy
+        apiserver: "true"
+    spec:
+      serviceAccountName: apiserver-proxy
+      containers:
+        - image: ko://github.com/phosae/x-kubernetes/apiserver-proxy
+          args:
+            [
+              "--cert-dir=/etc/kubernetes/pki",
+              "--secure-port=6443",
+              "--authentication-token-webhook-cache-ttl=10s",
+              "--authorization-webhook-cache-authorized-ttl=10s",
+              "--authorization-webhook-cache-unauthorized-ttl=5s",
+              "-v=6",
+            ]
+          name: apiserver-proxy
+          ports:
+            - containerPort: 6443
+          volumeMounts:
+            - name: apiserver-proxy-tls
+              mountPath: /etc/kubernetes/pki
+      volumes:
+        - name: apiserver-proxy-tls
+          secret:
+            secretName: apiserver-proxy-tls

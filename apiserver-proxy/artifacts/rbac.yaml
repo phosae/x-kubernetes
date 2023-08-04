@@ -1,0 +1,52 @@
+# clusterrole delegate auth decisions to the Kubernetes core API server
+# create authentication.k8s.io/tokenreviews
+# create authorization.k8s.io/subjectaccessreviews
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: hello-apiserver-proxy:system:auth-delegator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:auth-delegator
+subjects:
+- kind: ServiceAccount
+  name: apiserver-proxy
+  namespace: hello
+---
+# role in kube-system allows our extension api-server to access the extension-apiserver-authentication configmap
+# get/list/watch configmaps/extension-apiserver-authentication
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: hello-apiserver-proxy:extension-apiserver-authentication-reader
+  namespace: kube-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: extension-apiserver-authentication-reader
+subjects:
+- kind: ServiceAccount
+  name: apiserver-proxy
+  namespace: hello
+---
+# bind the cluster-admin role to work as the kube-apiserver
+# can be an another clusterrole/role with smaller permissions
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: hello-apiserver-proxy:cluster-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: apiserver-proxy
+  namespace: hello
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: apiserver-proxy
+  namespace: hello

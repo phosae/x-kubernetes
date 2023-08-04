@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ./artifacts/rbac.yaml
+  - ./artifacts/app.yaml
+
+secretGenerator:
+  - name: apiserver-proxy-tls
+    namespace: hello
+    files:
+      - apiserver.local.config/certificates/apiserver.crt
+      - apiserver.local.config/certificates/apiserver.key
+    type: Opaque
