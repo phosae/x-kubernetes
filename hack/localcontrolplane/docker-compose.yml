@@ -2,6 +2,7 @@ services:
   etcd:
     hostname: etcd
     image: registry.k8s.io/etcd:3.5.7-0
+    # image: registry.aliyuncs.com/google_containers/etcd:3.5.7-0
     ports: [ "4001:4001" ]
     command: >
       /usr/local/bin/etcd
@@ -10,7 +11,8 @@ services:
       --initial-cluster-state new
   apiserver:
     hostname: apiserver
-    image: registry.k8s.io/kube-apiserver:v1.26.2
+    image: registry.k8s.io/kube-apiserver:v1.27.4
+    # image: registry.aliyuncs.com/google_containers/kube-apiserver:v1.27.4
     ports: ["6443:6443"]
     command: >
       kube-apiserver
@@ -34,7 +36,8 @@ services:
     - etcd
   controller-manager:
     hostname: controller-manager
-    image: registry.k8s.io/kube-controller-manager:v1.26.2
+    image: registry.k8s.io/kube-controller-manager:v1.27.4
+    # image: registry.aliyuncs.com/google_containers/kube-controller-manager:v1.27.4
     command: >
       kube-controller-manager
       --kubeconfig=/etc/kubernetes/pki/api.kubeconfig
