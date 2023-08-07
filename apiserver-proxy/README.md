@@ -28,7 +28,7 @@ set up K8s with [KinD](https://kind.sigs.k8s.io/),
 and our custom apiserver provides resources `hello.zeng.dev/v1/foos` and `hello.zeng.dev/v2/foos`
 
 ```bash
-cd .. && make localenv && cd api-aggregation-lib && make deploy && cd -
+cd .. && make localenv && cd api-aggregation-lib && make deploy && cd ../apiserver-proxy
 ```
 create some foos and pods
 
@@ -96,7 +96,7 @@ Error from server (Forbidden): pods is forbidden: User "system:serviceaccount:he
 
 ## known issues
 
-The `Table` representation, as requested by kubectl, are implemented by [upstream apiserver](https://github.com/kubernetes/kubernetes/blob/cc2f7b319801e1fd983a09e2442001e44010827b/staging/src/k8s.io/apiserver/pkg/endpoints/handlers/response.go#L40-L94).
+The `Table` representation, as requested by kubectl, is implemented by [upstream apiserver](https://github.com/kubernetes/kubernetes/blob/cc2f7b319801e1fd983a09e2442001e44010827b/staging/src/k8s.io/apiserver/pkg/endpoints/handlers/response.go#L40-L94).
 
 ```
 curl -H "Accept: application/json;as=Table;v=v1;g=meta.k8s.io,application/json;as=Table;v=v1beta1;g=meta.k8s.io,application/json" \
