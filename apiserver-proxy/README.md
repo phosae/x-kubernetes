@@ -2,7 +2,7 @@
 
 The apiserver-proxy works as middle proxy between client-go/kubectl and kube-apiserver. 
 
-When handle `get/list` requests, the apiserver-proxy firstly list/watch resources from kube-apiserver. 
+When handling `get/list` requests, the apiserver-proxy firstly list/watch resources from kube-apiserver. 
 All subsequence `get/list` requests are returned from cache.
 
 Requests with verbs `watch/post/patch/update/delete` are forwarded to kube-apiserver.

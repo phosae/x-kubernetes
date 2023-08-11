@@ -146,6 +146,30 @@ Writing an apiserver is more complex than using CRD, but it offers users more fu
 
 In summary, for most cases, CRD is sufficient. In my opinion, writing an API server is more fun.
 
+### the interesting apiserver-proxy
+
+The [apiserver-proxy] is inspired by [issue #2].
+
+The apiserver-proxy acts as a middle proxy between client-go/kubectl and kube-apiserver. By utilizing caching, it can effectively reduce the workload on the upstream apiserver. In edge computing, it can serve as the kube-apiserver for edge nodes, addressing the issue of unstable connectivity between edge nodes and the central kube-apiserver.
+
+When handling get/list requests, the apiserver-proxy first retrieves resources by listing/watching them from kube-apiserver. All subsequent get/list requests are then returned from the cache.
+
+```mermaid
+flowchart LR
+
+cache[(informer<br/>cache)]
+client[client-go/<br/>kubectl ]
+
+client<--> apiserver-proxy
+
+apiserver-proxy <--> verb{is get/list}
+
+verb{is get/list} --> |yes<br/>read<br/>cache| cache
+verb{is get/list} <--no<br>requests<br/>upstream-->kube-apiserver
+
+cache<-- list-watch--> kube-apiserver
+```
+
 ## controllers
 //todo
 
@@ -166,10 +190,12 @@ In summary, for most cases, CRD is sufficient. In my opinion, writing an API ser
 [apiserver-from-scratch]: ./apiserver-from-scratch/
 [x-kubernetes/api]: ./api/
 [apiserver-using-library]: ./api-aggregation-lib/
+[apiserver-proxy]: ./apiserver-proxy/
 
 [update-crd-docker.sh]: ./api/hack/update-crd-docker.sh
 
 [#1]: https://github.com/phosae/x-kubernetes/pull/1
+[issue #2]: https://github.com/phosae/x-kubernetes/issues/2
 [disallow admission control implementation]: https://github.com/phosae/x-kubernetes/commit/c2bfa30485677249374dbb582e8a111c0b897f0c
 
 <!-- blog posts about x-kubernetes -->
