@@ -1,0 +1,23 @@
+# create v2 object
+#   kubectl apply -f foo-v2.yml
+# update subresource status
+#   crd
+#     kubectl patch --type merge fo/myfoo --subresource status --patch-file foo-v2.yml
+#   apiserver
+#     kubectl patch fo/myfoo --subresource status --patch-file foo-v2.yml
+apiVersion: hello.zeng.dev/v2
+kind: Foo
+metadata:
+  name: myfoo
+spec:
+  config:
+    msg: testmsg
+    msg1: "hi, there👋"
+  image: nginx
+status:
+  conditions:
+    - status: "True"
+      type: Worker
+    - status: "True"
+      type: Config
+  phase: Ready

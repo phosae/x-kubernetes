@@ -69,6 +69,8 @@ spec:
           jsonPath: .spec.config.msg1
           type: string
           priority: 1
+      subresources: 
+        status: {}
       schema:
         openAPIV3Schema:
           type: object

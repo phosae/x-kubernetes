@@ -57,10 +57,10 @@ func (fooStrategy) NamespaceScoped() bool {
 }
 
 // GetResetFields returns the set of fields that get reset by the strategy
-// and should not be modified by the user.
+// and should not be modified by the user. (only do reset in put/patch actions, not for create action)
 func (fooStrategy) GetResetFields() map[fieldpath.APIVersion]*fieldpath.Set {
 	fields := map[fieldpath.APIVersion]*fieldpath.Set{
-		"v1": fieldpath.NewSet(
+		"hello.zeng.dev/v2": fieldpath.NewSet(
 			fieldpath.MakePathOrDie("status"),
 		),
 	}
@@ -69,6 +69,10 @@ func (fooStrategy) GetResetFields() map[fieldpath.APIVersion]*fieldpath.Set {
 }
 
 func (fooStrategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
+	foo := obj.(*hello.Foo)
+	foo.Status = hello.FooStatus{
+		Phase: hello.FooPhaseProcessing,
+	}
 }
 
 func (fooStrategy) PrepareForUpdate(ctx context.Context, obj, old runtime.Object) {
@@ -140,7 +144,7 @@ type fooStatusStrategy struct {
 // and should not be modified by the user.
 func (fooStatusStrategy) GetResetFields() map[fieldpath.APIVersion]*fieldpath.Set {
 	return map[fieldpath.APIVersion]*fieldpath.Set{
-		"v1": fieldpath.NewSet(
+		"hello.zeng.dev/v2": fieldpath.NewSet(
 			fieldpath.MakePathOrDie("spec"),
 			fieldpath.MakePathOrDie("metadata", "deletionTimestamp"),
 			fieldpath.MakePathOrDie("metadata", "ownerReferences"),
