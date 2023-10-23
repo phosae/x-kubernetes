@@ -95,6 +95,12 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 
+		if info.Subresource != "" && info.Subresource != "status" {
+			klog.V(9).Infof("forward subresource request GET %s to upstream apiserver", info.Path)
+			p.k8sProxy.ServeHTTP(w, r)
+			return
+		}
+
 		gvr := schema.GroupVersionResource{Group: info.APIGroup, Version: info.APIVersion, Resource: info.Resource}
 		gvk, err := p.restMapper.KindFor(gvr)
 		if err != nil {
