@@ -3,7 +3,7 @@ module github.com/phosae/x-kubernetes/apiserver-from-scratch
 go 1.20
 
 require (
-	github.com/evanphx/json-patch v4.12.0+incompatible
+	github.com/evanphx/json-patch v5.7.0+incompatible
 	github.com/google/gnostic v0.5.7-v3refs
 	google.golang.org/protobuf v1.28.1
 	k8s.io/apimachinery v0.27.3
