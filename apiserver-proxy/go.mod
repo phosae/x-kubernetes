@@ -3,7 +3,7 @@ module github.com/phosae/x-kubernetes/apiserver-proxy
 go 1.20
 
 require (
-	github.com/spf13/cobra v1.6.0
+	github.com/spf13/cobra v1.8.0
 	k8s.io/apimachinery v0.27.3
 	k8s.io/apiserver v0.27.3
 	k8s.io/client-go v0.27.3
@@ -46,7 +46,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.7.0 // indirect
 	github.com/imdario/mergo v0.3.6 // indirect
-	github.com/inconshreveable/mousetrap v1.0.1 // indirect
+	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
