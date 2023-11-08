@@ -5,7 +5,7 @@ go 1.20
 require (
 	github.com/evanphx/json-patch v4.12.0+incompatible
 	github.com/google/gnostic v0.5.7-v3refs
-	google.golang.org/protobuf v1.28.1
+	google.golang.org/protobuf v1.31.0
 	k8s.io/apimachinery v0.27.3
 	k8s.io/client-go v0.27.3 // test dep
 )
