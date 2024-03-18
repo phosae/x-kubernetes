@@ -4,8 +4,8 @@ go 1.20
 
 require (
 	github.com/phosae/x-kubernetes/api v0.0.0-00010101000000-000000000000
-	k8s.io/apiextensions-apiserver v0.29.2
-	k8s.io/apimachinery v0.29.2
+	k8s.io/apiextensions-apiserver v0.29.3
+	k8s.io/apimachinery v0.29.3
 )
 
 require (
