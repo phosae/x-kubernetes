@@ -4,9 +4,9 @@ go 1.20
 
 require (
 	github.com/gogo/protobuf v1.3.2
-	k8s.io/api v0.29.3
-	k8s.io/apimachinery v0.29.3
-	k8s.io/client-go v0.29.3
+	k8s.io/api v0.29.4
+	k8s.io/apimachinery v0.29.4
+	k8s.io/client-go v0.29.4
 	k8s.io/kube-openapi v0.0.0-20231010175941-2dd684a91f00
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1
 )
@@ -33,10 +33,10 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	golang.org/x/net v0.19.0 // indirect
+	golang.org/x/net v0.23.0 // indirect
 	golang.org/x/oauth2 v0.10.0 // indirect
-	golang.org/x/sys v0.15.0 // indirect
-	golang.org/x/term v0.15.0 // indirect
+	golang.org/x/sys v0.18.0 // indirect
+	golang.org/x/term v0.18.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
