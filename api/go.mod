@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/gogo/protobuf v1.3.2
-	k8s.io/api v0.29.4
+	k8s.io/api v0.30.0
 	k8s.io/apimachinery v0.30.0
 	k8s.io/client-go v0.29.4
 	k8s.io/kube-openapi v0.0.0-20240228011516-70dd3763d340
