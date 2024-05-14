@@ -27,7 +27,7 @@ func TestDiscovery(t *testing.T) {
 	log.Println(*gvrs[0])
 
 	mapper := restmapper.NewDiscoveryRESTMapper(gvrs)
-	expander := restmapper.NewShortcutExpander(mapper, kube.DiscoveryClient)
+	expander := restmapper.NewShortcutExpander(mapper, kube.DiscoveryClient, nil)
 
 	tests := []struct {
 		name      string

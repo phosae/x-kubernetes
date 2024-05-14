@@ -17,7 +17,7 @@ import (
 	"time"
 
 	jsonpatch "github.com/evanphx/json-patch"
-	gnosticopenapiv2 "github.com/google/gnostic/openapiv2"
+	gnosticopenapiv2 "github.com/google/gnostic-models/openapiv2"
 	"google.golang.org/protobuf/proto"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kruntime "k8s.io/apimachinery/pkg/runtime"

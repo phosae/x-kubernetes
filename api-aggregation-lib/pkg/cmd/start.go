@@ -10,15 +10,16 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/apiserver/pkg/admission"
 	openapinamer "k8s.io/apiserver/pkg/endpoints/openapi"
-	"k8s.io/apiserver/pkg/features"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	"k8s.io/apiserver/pkg/server/options"
 	genericoptions "k8s.io/apiserver/pkg/server/options"
 	serverstorage "k8s.io/apiserver/pkg/server/storage"
 	"k8s.io/apiserver/pkg/storage/storagebackend"
-	"k8s.io/apiserver/pkg/util/feature"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	cliflag "k8s.io/component-base/cli/flag"
@@ -99,10 +100,11 @@ func (o Options) ServerConfig() (*myapiserver.Config, error) {
 	}
 
 	if o.EnableEtcdStorage {
-		if err := o.Etcd.Complete(apiservercfg.Config.StorageObjectCountTracker, apiservercfg.Config.DrainedNotify(), apiservercfg.Config.AddPostStartHook); err != nil {
-			return nil, err
+		storageConfigCopy := o.Etcd.StorageConfig
+		if storageConfigCopy.StorageObjectCountTracker == nil {
+			storageConfigCopy.StorageObjectCountTracker = apiservercfg.StorageObjectCountTracker
 		}
-
+		klog.Infof("etcd cfg: %v", o.Etcd)
 		// set apiservercfg's RESTOptionsGetter as StorageFactoryRestOptionsFactory{..., StorageFactory: DefaultStorageFactory}
 		// like https://github.com/kubernetes/kubernetes/blob/e1ad9bee5bba8fbe85a6bf6201379ce8b1a611b1/cmd/kube-apiserver/app/server.go#L407-L415
 		// DefaultStorageFactory#NewConfig provides a way to negotiate StorageSerializer/DeSerializer by Etcd.DefaultStorageMediaType option
@@ -119,8 +121,6 @@ func (o Options) ServerConfig() (*myapiserver.Config, error) {
 			nil), &apiservercfg.Config); err != nil {
 			return nil, err
 		}
-		klog.Infof("etcd cfg: %v", o.Etcd)
-		o.Etcd.StorageConfig.Paging = utilfeature.DefaultFeatureGate.Enabled(features.APIListChunking)
 		// apiservercfg.ClientConfig, err = o.restConfig()
 		// if err != nil {
 		// 	return nil, err
@@ -151,11 +151,9 @@ func (o Options) ApiserverConfig() (*genericapiserver.RecommendedConfig, error) 
 	serverConfig.OpenAPIConfig.Info.Title = "hello.zeng.dev-server"
 	serverConfig.OpenAPIConfig.Info.Version = "0.1"
 
-	if utilfeature.DefaultFeatureGate.Enabled(features.OpenAPIV3) {
-		serverConfig.OpenAPIV3Config = genericapiserver.DefaultOpenAPIV3Config(generatedopenapi.GetOpenAPIDefinitions, namer)
-		serverConfig.OpenAPIV3Config.Info.Title = "hello.zeng.dev-server"
-		serverConfig.OpenAPIV3Config.Info.Version = "0.1"
-	}
+	serverConfig.OpenAPIV3Config = genericapiserver.DefaultOpenAPIV3Config(generatedopenapi.GetOpenAPIDefinitions, namer)
+	serverConfig.OpenAPIV3Config.Info.Title = "hello.zeng.dev-server"
+	serverConfig.OpenAPIV3Config.Info.Version = "0.1"
 
 	if o.EnableAuth {
 		if err := o.Authentication.ApplyTo(&serverConfig.Authentication, serverConfig.SecureServing, nil); err != nil {
@@ -174,7 +172,16 @@ func (o Options) ApiserverConfig() (*genericapiserver.RecommendedConfig, error) 
 		// informerFactory := helloinformers.NewSharedInformerFactory(client, serverConfig.LoopbackClientConfig.Timeout)
 		// initializers := []admission.PluginInitializer{//} */
 
-		o.Admission.ApplyTo(&serverConfig.Config, serverConfig.SharedInformerFactory, serverConfig.ClientConfig, feature.DefaultFeatureGate)
+		kubeClient, err := kubernetes.NewForConfig(serverConfig.ClientConfig)
+		if err != nil {
+			return nil, err
+		}
+		dynamicClient, err := dynamic.NewForConfig(serverConfig.ClientConfig)
+		if err != nil {
+			return nil, err
+		}
+		initializers := []admission.PluginInitializer{}
+		o.Admission.ApplyTo(&serverConfig.Config, serverConfig.SharedInformerFactory, kubeClient, dynamicClient, utilfeature.DefaultFeatureGate, initializers...)
 	}
 
 	return serverConfig, nil
