@@ -5,7 +5,7 @@ go 1.22.0
 require (
 	github.com/evanphx/json-patch v5.9.0+incompatible
 	github.com/google/gnostic-models v0.6.8
-	google.golang.org/protobuf v1.35.1
+	google.golang.org/protobuf v1.35.2
 	k8s.io/apimachinery v0.31.2
 	k8s.io/client-go v0.31.2 // test dep
 )
