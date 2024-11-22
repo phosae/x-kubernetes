@@ -1,6 +1,6 @@
 module github.com/phosae/x-kubernetes/api
 
-go 1.20
+go 1.22.0
 
 require (
 	github.com/gogo/protobuf v1.3.2
