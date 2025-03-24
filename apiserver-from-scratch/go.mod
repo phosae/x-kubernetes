@@ -1,12 +1,12 @@
 module github.com/phosae/x-kubernetes/apiserver-from-scratch
 
 go 1.22.0
-toolchain go1.23.4
+toolchain go1.24.1
 
 require (
 	github.com/evanphx/json-patch v5.9.11+incompatible
 	github.com/google/gnostic-models v0.6.9
-	google.golang.org/protobuf v1.36.5
+	google.golang.org/protobuf v1.36.6
 	k8s.io/apimachinery v0.32.3
 	k8s.io/client-go v0.32.3 // test dep
 )
