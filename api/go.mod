@@ -5,7 +5,7 @@ toolchain go1.24.1
 
 require (
 	github.com/gogo/protobuf v1.3.2
-	k8s.io/api v0.32.4
+	k8s.io/api v0.33.0
 	k8s.io/apimachinery v0.33.0
 	k8s.io/client-go v0.32.4
 	k8s.io/kube-openapi v0.0.0-20250318190949-c8a335a9a2ff
