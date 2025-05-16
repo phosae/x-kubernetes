@@ -1,13 +1,14 @@
 module github.com/phosae/x-kubernetes/api
 
-go 1.22.0
+go 1.24.0
+
 toolchain go1.24.1
 
 require (
 	github.com/gogo/protobuf v1.3.2
-	k8s.io/api v0.33.0
-	k8s.io/apimachinery v0.33.0
-	k8s.io/client-go v0.33.0
+	k8s.io/api v0.33.1
+	k8s.io/apimachinery v0.33.1
+	k8s.io/client-go v0.33.1
 	k8s.io/kube-openapi v0.0.0-20250318190949-c8a335a9a2ff
 	sigs.k8s.io/structured-merge-diff/v4 v4.7.0
 )
