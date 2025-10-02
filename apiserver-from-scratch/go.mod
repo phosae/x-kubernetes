@@ -7,7 +7,7 @@ toolchain go1.24.1
 require (
 	github.com/evanphx/json-patch v5.9.11+incompatible
 	github.com/google/gnostic-models v0.7.0
-	google.golang.org/protobuf v1.36.9
+	google.golang.org/protobuf v1.36.10
 	k8s.io/apimachinery v0.34.1
 	k8s.io/client-go v0.34.1 // test dep
 )
