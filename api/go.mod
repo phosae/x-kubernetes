@@ -4,9 +4,9 @@ go 1.25.0
 
 require (
 	github.com/gogo/protobuf v1.3.2
-	k8s.io/api v0.35.0
-	k8s.io/apimachinery v0.35.0
-	k8s.io/client-go v0.35.0
+	k8s.io/api v0.35.1
+	k8s.io/apimachinery v0.35.1
+	k8s.io/client-go v0.35.1
 	k8s.io/kube-openapi v0.0.0-20250910181357-589584f1c912
 	sigs.k8s.io/structured-merge-diff/v4 v4.7.0
 )
